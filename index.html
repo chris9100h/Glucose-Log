@@ -812,11 +812,67 @@ async function loadData() {
 }
 
 function classify(v, note) {
-  const sick = note && note.toLowerCase().includes('stomach virus');
-  if (v < 70)   return { cls:"low",      badge:"badge-low",      label:"⚠ Low",      text:"Hypoglycemia – monitor closely on HGH protocol." };
-  if (v <= 99)  return { cls:"normal",   badge:"badge-normal",   label:"✓ Normal",   text:"Optimal fasting value. Protocol is working well." };
-  if (v <= 125) return { cls:"elevated", badge:"badge-elevated", label:"~ Elevated", text: sick ? "Elevated due to stomach virus – stress cortisol response, not HGH-related." : "Borderline. Typical for HGH use – monitor insulin sensitivity." };
-  return        { cls:"high",    badge:"badge-high",    label:"✕ High",    text: sick ? "Significantly elevated due to stomach virus – illness-related, not protocol-relevant." : "Significantly elevated. HGH-induced IR possible – track closely." };
+  const noteLower = note ? note.toLowerCase() : '';
+
+  // Extensive list of keywords: illnesses, viruses, infections + common symptoms
+  const isSick = [
+    // Illness / Virus / Infection related
+    'virus', 'viral', 'sick', 'ill', 'illness', 'infection', 'infected',
+    'fever', 'flu', 'cold', 'covid', 'corona', 'influenza', 'grippe',
+    'bug', 'disease', 'contagious', 'under the weather', 'not feeling well',
+    'not well', 'feeling off', 'feeling bad', 'coming down with', 'have a cold',
+    'have the flu', 'recovering from',
+
+    // Common symptoms
+    'sore throat', 'runny nose', 'stuffy nose', 'nasal congestion',
+    'cough', 'coughing', 'sneezing', 'shortness of breath', 'difficulty breathing',
+    'chills', 'shivering', 'headache', 'migraine', 'body ache', 'muscle ache',
+    'muscle pain', 'joint pain', 'fatigue', 'extreme fatigue', 'tiredness',
+    'malaise', 'weakness', 'dizziness', 'nausea', 'vomiting', 'diarrhea',
+    'stomach ache', 'abdominal pain', 'loss of appetite', 'loss of taste',
+    'loss of smell', 'anosmia', 'feverish', 'sweating', 'night sweats',
+    'chest pain', 'sinus pressure', 'sinusitis', 'bronchitis', 'respiratory',
+    'earache', 'ear pain', 'throat pain'
+  ].some(word => noteLower.includes(word));
+
+  if (v < 70) {
+    return { 
+      cls: "low", 
+      badge: "badge-low", 
+      label: "⚠ Low", 
+      text: "Hypoglycemia – monitor closely on HGH protocol." 
+    };
+  }
+
+  if (v <= 99) {
+    return { 
+      cls: "normal", 
+      badge: "badge-normal", 
+      label: "✓ Normal", 
+      text: "Optimal fasting value. Protocol is working well." 
+    };
+  }
+
+  if (v <= 125) {
+    return { 
+      cls: "elevated", 
+      badge: "badge-elevated", 
+      label: "~ Elevated", 
+      text: isSick 
+        ? "Elevated due to illness/virus – likely stress cortisol response, not HGH-related." 
+        : "Borderline. Typical for HGH use – monitor insulin sensitivity." 
+    };
+  }
+
+  // v > 125
+  return { 
+    cls: "high", 
+    badge: "badge-high", 
+    label: "✕ High", 
+    text: isSick 
+      ? "Significantly elevated due to illness/virus – not protocol-relevant." 
+      : "Significantly elevated. HGH-induced insulin resistance possible – track closely." 
+  };
 }
 
 /* ── state ── */
