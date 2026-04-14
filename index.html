@@ -59,6 +59,83 @@
     font-family: 'IBM Plex Mono', monospace;
   }
 
+  /* APP SWITCHER */
+  .app-switcher { position: relative; }
+
+  .apps-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    display: grid;
+    grid-template-columns: repeat(3, 5px);
+    grid-template-rows: repeat(2, 5px);
+    gap: 3px;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+  }
+  .apps-btn:hover { opacity: 1; }
+  .apps-btn span {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: block;
+  }
+
+  .apps-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    background: #1a1a1a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px;
+    min-width: 170px;
+    z-index: 200;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  .apps-menu.open { display: block; }
+
+  .app-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background 0.12s;
+    cursor: pointer;
+  }
+  .app-link:hover { background: rgba(255,255,255,0.05); }
+  .app-link.active { background: rgba(255,106,0,0.1); }
+
+  .app-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .app-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--text-bright);
+    line-height: 1.2;
+  }
+  .app-label small {
+    display: block;
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    margin-top: 1px;
+  }
+  .app-link.active .app-label { color: var(--accent); }
+
   /* FORM */
   .form-card {
     background: var(--surface);
@@ -492,7 +569,27 @@
 <header>
   <div class="header-left">
     <h1>Blood Glucose — Log</h1>
-    <p>HGH Protocol · mg/dL</p>
+    <p>HGH Protocol · evenings · mg/dL</p>
+  </div>
+  <div class="app-switcher">
+    <button class="apps-btn" id="apps-btn" onclick="toggleAppsMenu()">
+      <span></span><span></span><span></span>
+      <span></span><span></span><span></span>
+    </button>
+    <div class="apps-menu" id="apps-menu">
+      <a class="app-link" href="https://chris9100h.github.io/Weight-Tracker/" target="_blank">
+        <div class="app-icon" style="background:rgba(255,209,102,0.15);">⚖️</div>
+        <div class="app-label">Weight Tracker<small>chris9100h.github.io</small></div>
+      </a>
+      <a class="app-link active" href="#" onclick="return false;">
+        <div class="app-icon" style="background:rgba(255,106,0,0.15);">🩸</div>
+        <div class="app-label">Glucose Log<small>Active</small></div>
+      </a>
+      <a class="app-link" href="https://chris9100h.github.io/Watertracker_webapp/" target="_blank">
+        <div class="app-icon" style="background:rgba(57,217,138,0.15);">💧</div>
+        <div class="app-label">Wasser Tracker<small>chris9100h.github.io</small></div>
+      </a>
+    </div>
   </div>
 </header>
 
@@ -1030,6 +1127,17 @@ async function saveEdit() {
     render();
   } catch(e) { alert("Error: " + e.message); }
 }
+
+/* ── APP SWITCHER ── */
+function toggleAppsMenu() {
+  document.getElementById('apps-menu').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  const switcher = document.querySelector('.app-switcher');
+  if (!switcher.contains(e.target)) {
+    document.getElementById('apps-menu').classList.remove('open');
+  }
+});
 
 /* ── EVENT LISTENERS ── */
 document.getElementById('filters-phase').addEventListener('click', e => {
