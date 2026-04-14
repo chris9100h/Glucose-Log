@@ -150,9 +150,27 @@
   }
   .form-row {
     display: grid;
-    grid-template-columns: 145px 100px 120px 120px 105px 140px 1fr auto;
+    grid-template-columns: 1.2fr 0.8fr 0.8fr 0.8fr 0.8fr 1fr auto;
     gap: 10px;
     align-items: end;
+  }
+
+  .form-row-top {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .form-row-bottom {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    gap: 10px;
+    align-items: end;
+  }
+
+  .form-row-add {
+    margin-top: 10px;
   }
   .form-group { display: flex; flex-direction: column; gap: 6px; }
   .form-group label {
@@ -175,6 +193,18 @@
     transition: border-color 0.15s;
     width: 100%;
     height: 36px;
+    min-height: 36px;
+    max-height: 36px;
+    line-height: 20px;
+    -webkit-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+  }
+
+  /* restore select arrow on non-date */
+  .form-group select {
+    -webkit-appearance: auto;
+    appearance: auto;
   }
   .form-group input[type="date"]::-webkit-calendar-picker-indicator {
     filter: invert(0.5) sepia(1) saturate(5) hue-rotate(340deg);
@@ -205,8 +235,7 @@
   .form-msg {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.72rem;
-    margin-top: 12px;
-    min-height: 18px;
+    margin-top: 8px;
   }
   .form-msg.ok  { color: var(--green); }
   .form-msg.err { color: var(--red); }
@@ -581,12 +610,18 @@
   }
 
   @media (max-width: 800px) {
-    .form-row { grid-template-columns: 1fr 1fr; }
+    .form-row-top    { grid-template-columns: 1fr 1fr; }
+    .form-row-bottom { grid-template-columns: 1fr 1fr; }
     .stats-row { grid-template-columns: repeat(2, 1fr); }
     table { font-size: 0.73rem; }
     td { padding: 8px 6px; }
     thead th { padding: 7px 6px; }
     .chart-wrap { height: 180px; }
+  }
+
+  @media (max-width: 500px) {
+    .form-row-top    { grid-template-columns: 1fr; }
+    .form-row-bottom { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -623,7 +658,7 @@
 <!-- ADD ENTRY FORM -->
 <div class="form-card">
   <div class="form-title">Add Entry</div>
-  <div class="form-row">
+  <div class="form-row-top">
     <div class="form-group">
       <label>Date</label>
       <input type="date" id="f-date">
@@ -632,6 +667,8 @@
       <label>Time (HH:MM)</label>
       <input type="text" id="f-time" placeholder="03:45">
     </div>
+  </div>
+  <div class="form-row-bottom">
     <div class="form-group">
       <label>Value (mg/dL)</label>
       <input type="number" id="f-val" placeholder="92">
@@ -671,8 +708,8 @@
       <label>Note (optional)</label>
       <input type="text" id="f-note" placeholder="e.g. refeed day">
     </div>
-    <button class="btn-add" id="btn-add" onclick="addEntry()">Add</button>
   </div>
+  <button class="btn-add form-row-add" id="btn-add" onclick="addEntry()" style="width:100%;margin-top:10px;">Add</button>
   <div class="form-msg" id="form-msg"></div>
 </div>
 
