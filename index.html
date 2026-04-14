@@ -743,6 +743,7 @@
     <select id="filter-context-select" onchange="onContextFilterChange(this.value)" class="filter-select">
       <option value="all">All</option>
       <option value="">None</option>
+      <option value="__any__">Any</option>
       <option value="Sick / Digestive issues">Sick / Digestive issues</option>
       <option value="Stress / Poor sleep">Stress / Poor sleep</option>
       <option value="Refeed / Cheat">Refeed / Cheat</option>
@@ -922,7 +923,11 @@ function getFiltered() {
   return allData.filter(r => {
     const phaseOk   = activePhase   === "all" || r.phase === activePhase;
     const stateOk   = activeState   === "all" || (r.state || "fasted") === activeState;
-    const contextOk = activeContext === "all" || (r.context || "") === activeContext;
+    const contextOk = activeContext === "all"
+      ? true
+      : activeContext === "__any__"
+        ? (r.context || "") !== ""
+        : (r.context || "") === activeContext;
     return phaseOk && stateOk && contextOk;
   });
 }
