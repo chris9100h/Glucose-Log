@@ -150,7 +150,7 @@
   }
   .form-row {
     display: grid;
-    grid-template-columns: 155px 105px 125px 130px 110px 1fr auto;
+    grid-template-columns: 145px 100px 120px 120px 105px 140px 1fr auto;
     gap: 10px;
     align-items: end;
   }
@@ -365,7 +365,6 @@
   .filter-btn:hover { border-color: var(--accent); color: var(--text); }
   .filter-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
 
-  /* STATE BADGES */
   .state-fasted {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.67rem;
@@ -384,6 +383,18 @@
     background: rgba(57,217,138,0.08);
     color: var(--green);
     border: 1px solid rgba(57,217,138,0.2);
+    white-space: nowrap;
+  }
+
+  /* CONTEXT BADGE */
+  .context-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: rgba(255,71,87,0.08);
+    color: #ff8a95;
+    border: 1px solid rgba(255,71,87,0.2);
     white-space: nowrap;
   }
 
@@ -627,6 +638,16 @@
       </select>
     </div>
     <div class="form-group">
+      <label>Context</label>
+      <select id="f-context">
+        <option value="" selected>— None —</option>
+        <option value="Sick / Digestive issues">Sick / Digestive issues</option>
+        <option value="Stress / Poor sleep">Stress / Poor sleep</option>
+        <option value="Refeed / Cheat">Refeed / Cheat</option>
+        <option value="Date night / Eating out">Date night / Eating out</option>
+      </select>
+    </div>
+    <div class="form-group">
       <label>Note (optional)</label>
       <input type="text" id="f-note" placeholder="e.g. refeed day">
     </div>
@@ -697,6 +718,17 @@
       <button class="filter-btn" data-state="fed">Fed</button>
     </div>
   </div>
+  <div class="filter-row">
+    <span class="filter-row-label">Context</span>
+    <div id="filters-context" style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="filter-btn active" data-context="all">All</button>
+      <button class="filter-btn" data-context="">None</button>
+      <button class="filter-btn" data-context="Sick / Digestive issues">Sick / Digestive issues</button>
+      <button class="filter-btn" data-context="Stress / Poor sleep">Stress / Poor sleep</button>
+      <button class="filter-btn" data-context="Refeed / Cheat">Refeed / Cheat</button>
+      <button class="filter-btn" data-context="Date night / Eating out">Date night / Eating out</button>
+    </div>
+  </div>
 </div>
 
 <!-- LEGEND -->
@@ -716,6 +748,7 @@
       <th>Value</th>
       <th>Phase</th>
       <th>State</th>
+      <th>Context</th>
       <th>Note</th>
       <th>Assessment</th>
       <th></th>
@@ -762,6 +795,16 @@
         <select id="m-state">
           <option value="fasted">Fasted</option>
           <option value="fed">Fed</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Context</label>
+        <select id="m-context">
+          <option value="">— None —</option>
+          <option value="Sick / Digestive issues">Sick / Digestive issues</option>
+          <option value="Stress / Poor sleep">Stress / Poor sleep</option>
+          <option value="Refeed / Cheat">Refeed / Cheat</option>
+          <option value="Date night / Eating out">Date night / Eating out</option>
         </select>
       </div>
       <div class="form-group full">
@@ -811,74 +854,43 @@ async function loadData() {
   });
 }
 
-function classify(v, note) {
-  const noteLower = note ? note.toLowerCase() : '';
+function classify(v, context) {
+  const ctx = context || "";
+  const sick    = ctx === "Sick / Digestive issues";
+  const stress  = ctx === "Stress / Poor sleep";
+  const refeed  = ctx === "Refeed / Cheat";
+  const eating  = ctx === "Date night / Eating out";
+  const anyCtx  = sick || stress || refeed || eating;
 
-  // Extensive list of keywords: illnesses, viruses, infections + common symptoms
-  const isSick = [
-    // Illness / Virus / Infection related
-    'virus', 'viral', 'sick', 'ill', 'illness', 'infection', 'infected',
-    'fever', 'flu', 'cold', 'covid', 'corona', 'influenza', 'grippe',
-    'bug', 'disease', 'contagious', 'under the weather', 'not feeling well',
-    'not well', 'feeling off', 'feeling bad', 'coming down with', 'have a cold',
-    'have the flu', 'recovering from',
+  if (v < 70) return { cls:"low", badge:"badge-low", label:"⚠ Low", text:"Hypoglycemia – monitor closely on HGH protocol." };
 
-    // Common symptoms
-    'sore throat', 'runny nose', 'stuffy nose', 'nasal congestion',
-    'cough', 'coughing', 'sneezing', 'shortness of breath', 'difficulty breathing',
-    'chills', 'shivering', 'headache', 'migraine', 'body ache', 'muscle ache',
-    'muscle pain', 'joint pain', 'fatigue', 'extreme fatigue', 'tiredness',
-    'malaise', 'weakness', 'dizziness', 'nausea', 'vomiting', 'diarrhea',
-    'stomach ache', 'abdominal pain', 'loss of appetite', 'loss of taste',
-    'loss of smell', 'anosmia', 'feverish', 'sweating', 'night sweats',
-    'chest pain', 'sinus pressure', 'sinusitis', 'bronchitis', 'respiratory',
-    'earache', 'ear pain', 'throat pain'
-  ].some(word => noteLower.includes(word));
+  if (v <= 99) return { cls:"normal", badge:"badge-normal", label:"✓ Normal", text:
+    anyCtx ? "Normal despite the context – good insulin response." :
+    "Optimal fasting value. Protocol is working well."
+  };
 
-  if (v < 70) {
-    return { 
-      cls: "low", 
-      badge: "badge-low", 
-      label: "⚠ Low", 
-      text: "Hypoglycemia – monitor closely on HGH protocol." 
-    };
-  }
+  if (v <= 125) return { cls:"elevated", badge:"badge-elevated", label:"~ Elevated", text:
+    sick   ? "Elevated – likely stress cortisol from illness/digestive issues, not HGH-related." :
+    stress ? "Elevated – cortisol from stress or poor sleep can raise fasting glucose. Not protocol-related." :
+    refeed ? "Elevated – expected after a refeed or cheat. Should normalise within 24h." :
+    eating ? "Elevated – dietary intake from eating out. Monitor next fasting reading." :
+    "Borderline. Typical for HGH use – monitor insulin sensitivity."
+  };
 
-  if (v <= 99) {
-    return { 
-      cls: "normal", 
-      badge: "badge-normal", 
-      label: "✓ Normal", 
-      text: "Optimal fasting value. Protocol is working well." 
-    };
-  }
-
-  if (v <= 125) {
-    return { 
-      cls: "elevated", 
-      badge: "badge-elevated", 
-      label: "~ Elevated", 
-      text: isSick 
-        ? "Elevated due to illness/virus – likely stress cortisol response, not HGH-related." 
-        : "Borderline. Typical for HGH use – monitor insulin sensitivity." 
-    };
-  }
-
-  // v > 125
-  return { 
-    cls: "high", 
-    badge: "badge-high", 
-    label: "✕ High", 
-    text: isSick 
-      ? "Significantly elevated due to illness/virus – not protocol-relevant." 
-      : "Significantly elevated. HGH-induced insulin resistance possible – track closely." 
+  return { cls:"high", badge:"badge-high", label:"✕ High", text:
+    sick   ? "Significantly elevated – illness/digestive stress response. Not protocol-relevant, monitor recovery." :
+    stress ? "Significantly elevated – severe cortisol spike likely. Review sleep and stress load." :
+    refeed ? "Significantly elevated after refeed/cheat – consider adjusting carb intake next time." :
+    eating ? "Significantly elevated – heavy meal impact. Check if pattern repeats on normal days." :
+    "Significantly elevated. HGH-induced IR possible – track closely."
   };
 }
 
 /* ── state ── */
-let allData      = [];   // asc sorted
+let allData      = [];
 let activePhase  = "all";
 let activeState  = "all";
+let activeContext = "all";
 let editingId    = null;
 let chartDays    = 30;
 let chartMode    = "days";   // "days" | "all" | "custom"
@@ -888,9 +900,10 @@ let glucoseChart = null;
 
 function getFiltered() {
   return allData.filter(r => {
-    const phaseOk = activePhase === "all" || r.phase === activePhase;
-    const stateOk = activeState === "all" || (r.state || "fasted") === activeState;
-    return phaseOk && stateOk;
+    const phaseOk   = activePhase   === "all" || r.phase === activePhase;
+    const stateOk   = activeState   === "all" || (r.state || "fasted") === activeState;
+    const contextOk = activeContext === "all" || (r.context || "") === activeContext;
+    return phaseOk && stateOk && contextOk;
   });
 }
 
@@ -1046,7 +1059,7 @@ function render() {
     document.getElementById('minv').textContent  = "—";
     document.getElementById('maxv').textContent  = "—";
     document.getElementById('count').textContent = "0";
-    tbody.innerHTML = `<tr><td colspan="8" class="loading">No data for this filter.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="loading">No data for this filter.</td></tr>`;
     buildChart([]);
     return;
   }
@@ -1060,15 +1073,17 @@ function render() {
   const descFiltered = [...filtered].reverse();
   tbody.innerHTML = "";
   descFiltered.forEach(row => {
-    const c     = classify(row.val, row.note);
-    const state = row.state || "fasted";
-    const tr    = document.createElement('tr');
+    const c       = classify(row.val, row.context);
+    const state   = row.state || "fasted";
+    const context = row.context || "";
+    const tr      = document.createElement('tr');
     tr.innerHTML = `
       <td class="td-date">${row.date}</td>
       <td class="td-time">${row.time}</td>
       <td class="td-val val-${c.cls}">${row.val} <span style="font-size:0.63rem;font-weight:400;color:var(--text-dim)">mg/dL</span></td>
       <td class="td-cell">${row.phase}</td>
       <td><span class="state-${state}">${state.charAt(0).toUpperCase()+state.slice(1)}</span></td>
+      <td>${context ? `<span class="context-badge">${context}</span>` : ""}</td>
       <td class="td-cell">${row.note || ""}</td>
       <td>
         <span class="badge ${c.badge}">${c.label}</span>
@@ -1095,6 +1110,7 @@ async function addEntry() {
   const val     = parseInt(document.getElementById('f-val').value);
   const phase   = document.getElementById('f-phase').value;
   const state   = document.getElementById('f-state').value;
+  const context = document.getElementById('f-context').value;
   const note    = document.getElementById('f-note').value.trim();
   const msg     = document.getElementById('form-msg');
   const btn     = document.getElementById('btn-add');
@@ -1111,13 +1127,14 @@ async function addEntry() {
   msg.className = "form-msg";
 
   try {
-    await apiFetch("blood_glucose", { method: "POST", body: JSON.stringify([{ date, time, val, phase, state, note }]) });
+    await apiFetch("blood_glucose", { method: "POST", body: JSON.stringify([{ date, time, val, phase, state, context, note }]) });
     msg.textContent = `✓ Saved – ${date} · ${time} · ${val} mg/dL · ${state}`;
     msg.className = "form-msg ok";
-    document.getElementById('f-date').value = "";
-    document.getElementById('f-time').value = "";
-    document.getElementById('f-val').value  = "";
-    document.getElementById('f-note').value = "";
+    document.getElementById('f-date').value    = "";
+    document.getElementById('f-time').value    = "";
+    document.getElementById('f-val').value     = "";
+    document.getElementById('f-context').value = "";
+    document.getElementById('f-note').value    = "";
     allData = await loadData();
     updatePhaseFilterButtons();
     render();
@@ -1143,12 +1160,13 @@ function openEdit(id) {
   const row = allData.find(r => r.id === id);
   if (!row) return;
   editingId = id;
-  document.getElementById('m-date').value  = toISO(row.date);
-  document.getElementById('m-time').value  = row.time;
-  document.getElementById('m-val').value   = row.val;
-  document.getElementById('m-phase').value = row.phase;
-  document.getElementById('m-state').value = row.state || "fasted";
-  document.getElementById('m-note').value  = row.note || "";
+  document.getElementById('m-date').value    = toISO(row.date);
+  document.getElementById('m-time').value    = row.time;
+  document.getElementById('m-val').value     = row.val;
+  document.getElementById('m-phase').value   = row.phase;
+  document.getElementById('m-state').value   = row.state || "fasted";
+  document.getElementById('m-context').value = row.context || "";
+  document.getElementById('m-note').value    = row.note || "";
   document.getElementById('modal').classList.add('open');
 }
 
@@ -1163,6 +1181,7 @@ async function saveEdit() {
   const val     = parseInt(document.getElementById('m-val').value);
   const phase   = document.getElementById('m-phase').value;
   const state   = document.getElementById('m-state').value;
+  const context = document.getElementById('m-context').value;
   const note    = document.getElementById('m-note').value.trim();
 
   if (!dateISO || !time || isNaN(val)) { alert("Date, time and value are required."); return; }
@@ -1171,7 +1190,7 @@ async function saveEdit() {
   try {
     await apiFetch(`blood_glucose?id=eq.${editingId}`, {
       method: "PATCH",
-      body: JSON.stringify({ date, time, val, phase, state, note })
+      body: JSON.stringify({ date, time, val, phase, state, context, note })
     });
     closeModal();
     allData = await loadData();
@@ -1207,6 +1226,15 @@ document.getElementById('filters-state').addEventListener('click', e => {
   document.querySelectorAll('#filters-state .filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   activeState = btn.dataset.state;
+  render();
+});
+
+document.getElementById('filters-context').addEventListener('click', e => {
+  const btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+  document.querySelectorAll('#filters-context .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeContext = btn.dataset.context;
   render();
 });
 
@@ -1265,7 +1293,7 @@ document.getElementById('modal').addEventListener('click', e => {
     render();
   } catch(e) {
     document.getElementById('tbody').innerHTML =
-      `<tr><td colspan="8" class="loading" style="color:var(--red)">Failed to load: ${e.message}</td></tr>`;
+      `<tr><td colspan="9" class="loading" style="color:var(--red)">Failed to load: ${e.message}</td></tr>`;
   }
 })();
 </script>
