@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blood Glucose Log</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #080808;
+    --surface: #111111;
+    --border: #2a2a2a;
+    --accent: #ff6a00;
+    --accent-dim: rgba(255,106,0,0.12);
+    --accent-hover: rgba(255,106,0,0.22);
+    --green: #39d98a;
+    --yellow: #ffd166;
+    --red: #ff4757;
+    --orange: #ff6a00;
+    --text: #c8c8c8;
+    --text-dim: #555;
+    --text-bright: #f0f0f0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    padding: 28px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-left { border-left: 3px solid var(--accent); padding-left: 14px; }
+  header h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.15rem;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  header p {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 5px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* FORM */
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--accent);
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 28px;
+  }
+  .form-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+  .form-row {
+    display: grid;
+    grid-template-columns: 155px 105px 125px 130px 110px 1fr auto;
+    gap: 10px;
+    align-items: end;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-dim);
+  }
+  .form-group input,
+  .form-group select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-bright);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+    width: 100%;
+    height: 36px;
+  }
+  .form-group input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.5) sepia(1) saturate(5) hue-rotate(340deg);
+    cursor: pointer;
+  }
+  .form-group input:focus,
+  .form-group select:focus { border-color: var(--accent); }
+  .form-group select option { background: #111; }
+
+  .btn-add {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 0 20px;
+    height: 36px;
+    border-radius: 4px;
+    border: 1px solid var(--accent);
+    background: var(--accent-dim);
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .btn-add:hover { background: var(--accent-hover); }
+  .btn-add:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .form-msg {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    margin-top: 12px;
+    min-height: 18px;
+  }
+  .form-msg.ok  { color: var(--green); }
+  .form-msg.err { color: var(--red); }
+
+  /* STATS */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 10px;
+    text-align: center;
+  }
+  .stat-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .stat-label {
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-top: 4px;
+  }
+
+  /* CHART */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+  .chart-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .chart-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+  .chart-range-btns { display: flex; gap: 6px; }
+  .range-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .range-btn:hover { border-color: var(--accent); color: var(--text); }
+  .range-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  .custom-range {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+  .custom-range.visible { display: flex; }
+  .custom-range input[type="date"] {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-bright);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    padding: 4px 8px;
+    outline: none;
+    height: 28px;
+    transition: border-color 0.15s;
+  }
+  .custom-range input[type="date"]:focus { border-color: var(--accent); }
+  .custom-range input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.5) sepia(1) saturate(5) hue-rotate(340deg);
+    cursor: pointer;
+  }
+  .custom-range span {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    color: var(--text-dim);
+  }
+  .btn-apply-range {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--accent);
+    background: var(--accent-dim);
+    color: var(--accent);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    transition: all 0.15s;
+    height: 28px;
+  }
+  .btn-apply-range:hover { background: var(--accent-hover); }
+
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* FILTER ROWS */
+  .filter-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+  .filter-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .filter-row-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    width: 44px;
+    flex-shrink: 0;
+  }
+  .filter-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    padding: 5px 14px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+  .filter-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  /* STATE BADGES */
+  .state-fasted {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.67rem;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: rgba(255,106,0,0.08);
+    color: var(--accent);
+    border: 1px solid rgba(255,106,0,0.2);
+    white-space: nowrap;
+  }
+  .state-fed {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.67rem;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: rgba(57,217,138,0.08);
+    color: var(--green);
+    border: 1px solid rgba(57,217,138,0.2);
+    white-space: nowrap;
+  }
+
+  /* LEGEND */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  thead th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+    padding: 9px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  tbody tr { border-bottom: 1px solid #1c1c1c; transition: background 0.12s; }
+  tbody tr:hover { background: #141414; }
+  td { padding: 10px 10px; vertical-align: middle; }
+  .td-date, .td-time {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text-dim);
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+  .td-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 0.95rem;
+    white-space: nowrap;
+  }
+  .td-cell { font-size: 0.75rem; color: var(--text-dim); }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.68rem;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 3px 8px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .badge-normal   { background: rgba(57,217,138,0.1);  color: var(--green);  border: 1px solid rgba(57,217,138,0.25); }
+  .badge-elevated { background: rgba(255,209,102,0.1); color: var(--yellow); border: 1px solid rgba(255,209,102,0.25); }
+  .badge-high     { background: rgba(255,71,87,0.1);   color: var(--red);    border: 1px solid rgba(255,71,87,0.25); }
+  .badge-low      { background: rgba(255,106,0,0.1);   color: var(--orange); border: 1px solid rgba(255,106,0,0.25); }
+
+  .val-normal   { color: var(--green); }
+  .val-elevated { color: var(--yellow); }
+  .val-high     { color: var(--red); }
+  .val-low      { color: var(--orange); }
+
+  .assessment-text {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  /* ROW ACTIONS */
+  .row-actions { display: flex; gap: 6px; white-space: nowrap; }
+  .btn-icon {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem;
+    padding: 3px 9px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.12s;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .btn-edit   { border: 1px solid var(--border); background: transparent; color: var(--text-dim); }
+  .btn-edit:hover   { border-color: var(--accent); color: var(--accent); }
+  .btn-delete { border: 1px solid var(--border); background: transparent; color: var(--text-dim); }
+  .btn-delete:hover { border-color: var(--red); color: var(--red); }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.78);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--accent);
+    border-radius: 8px;
+    padding: 28px;
+    width: 500px;
+    max-width: 95vw;
+  }
+  .modal-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+  .modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .modal-grid .full { grid-column: 1 / -1; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .btn-cancel {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    padding: 8px 18px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+  }
+  .btn-cancel:hover { color: var(--text); border-color: #444; }
+  .btn-save {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    padding: 8px 18px;
+    border-radius: 4px;
+    border: 1px solid var(--accent);
+    background: var(--accent-dim);
+    color: var(--accent);
+    cursor: pointer;
+  }
+  .btn-save:hover { background: var(--accent-hover); }
+
+  .loading {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    padding: 30px 0;
+    text-align: center;
+  }
+
+  @media (max-width: 800px) {
+    .form-row { grid-template-columns: 1fr 1fr; }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    table { font-size: 0.73rem; }
+    td { padding: 8px 6px; }
+    thead th { padding: 7px 6px; }
+    .chart-wrap { height: 180px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Blood Glucose — Log</h1>
+    <p>HGH Protocol · evenings · mg/dL</p>
+  </div>
+</header>
+
+<!-- ADD ENTRY FORM -->
+<div class="form-card">
+  <div class="form-title">Add Entry</div>
+  <div class="form-row">
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" id="f-date">
+    </div>
+    <div class="form-group">
+      <label>Time (HH:MM)</label>
+      <input type="text" id="f-time" placeholder="03:45">
+    </div>
+    <div class="form-group">
+      <label>Value (mg/dL)</label>
+      <input type="number" id="f-val" placeholder="92">
+    </div>
+    <div class="form-group">
+      <label>Phase</label>
+      <select id="f-phase">
+        <option value="1 IU">1 IU</option>
+        <option value="2 IU">2 IU</option>
+        <option value="3 IU">3 IU</option>
+        <option value="4 IU" selected>4 IU</option>
+        <option value="5 IU">5 IU</option>
+        <option value="6 IU">6 IU</option>
+        <option value="7 IU">7 IU</option>
+        <option value="8 IU">8 IU</option>
+        <option value="10 IU">10 IU</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>State</label>
+      <select id="f-state">
+        <option value="fasted" selected>Fasted</option>
+        <option value="fed">Fed</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Note (optional)</label>
+      <input type="text" id="f-note" placeholder="e.g. refeed day">
+    </div>
+    <button class="btn-add" id="btn-add" onclick="addEntry()">Add</button>
+  </div>
+  <div class="form-msg" id="form-msg"></div>
+</div>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="stat">
+    <div class="stat-val" id="avg">—</div>
+    <div class="stat-label">Avg Value</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val" id="minv">—</div>
+    <div class="stat-label">Min</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val" id="maxv">—</div>
+    <div class="stat-label">Max</div>
+  </div>
+  <div class="stat">
+    <div class="stat-val" id="count">—</div>
+    <div class="stat-label">Readings</div>
+  </div>
+</div>
+
+<!-- CHART -->
+<div class="chart-card">
+  <div class="chart-header">
+    <div class="chart-title">Trend</div>
+    <div class="chart-range-btns">
+      <button class="range-btn" data-days="7">7D</button>
+      <button class="range-btn active" data-days="30">30D</button>
+      <button class="range-btn" data-days="90">90D</button>
+      <button class="range-btn" data-days="0">All</button>
+      <button class="range-btn" data-days="custom">Custom</button>
+    </div>
+  </div>
+  <div class="custom-range" id="custom-range">
+    <input type="date" id="chart-from">
+    <span>→</span>
+    <input type="date" id="chart-to">
+    <button class="btn-apply-range" onclick="applyCustomRange()">Apply</button>
+  </div>
+  <div class="chart-wrap">
+    <canvas id="glucoseChart"></canvas>
+  </div>
+</div>
+
+<!-- FILTER ROWS -->
+<div class="filter-section">
+  <div class="filter-row">
+    <span class="filter-row-label">Phase</span>
+    <div id="filters-phase" style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="filter-btn active" data-phase="all">All</button>
+      <button class="filter-btn" data-phase="2 IU">2 IU</button>
+      <button class="filter-btn" data-phase="3 IU">3 IU</button>
+      <button class="filter-btn" data-phase="4 IU">4 IU</button>
+    </div>
+  </div>
+  <div class="filter-row">
+    <span class="filter-row-label">State</span>
+    <div id="filters-state" style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="filter-btn active" data-state="all">All</button>
+      <button class="filter-btn" data-state="fasted">Fasted</button>
+      <button class="filter-btn" data-state="fed">Fed</button>
+    </div>
+  </div>
+</div>
+
+<!-- LEGEND -->
+<div class="legend">
+  <div class="legend-item"><div class="dot" style="background:var(--green)"></div>Normal (70–99)</div>
+  <div class="legend-item"><div class="dot" style="background:var(--yellow)"></div>Elevated (100–125)</div>
+  <div class="legend-item"><div class="dot" style="background:var(--red)"></div>High (&gt;125)</div>
+  <div class="legend-item"><div class="dot" style="background:var(--orange)"></div>Low (&lt;70)</div>
+</div>
+
+<!-- TABLE -->
+<table>
+  <thead>
+    <tr>
+      <th>Date</th>
+      <th>Time</th>
+      <th>Value</th>
+      <th>Phase</th>
+      <th>State</th>
+      <th>Note</th>
+      <th>Assessment</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="tbody">
+    <tr><td colspan="8" class="loading">Loading data...</td></tr>
+  </tbody>
+</table>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-title">Edit Entry</div>
+    <div class="modal-grid">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="m-date">
+      </div>
+      <div class="form-group">
+        <label>Time (HH:MM)</label>
+        <input type="text" id="m-time" placeholder="03:45">
+      </div>
+      <div class="form-group">
+        <label>Value (mg/dL)</label>
+        <input type="number" id="m-val">
+      </div>
+      <div class="form-group">
+        <label>Phase</label>
+        <select id="m-phase">
+          <option value="1 IU">1 IU</option>
+          <option value="2 IU">2 IU</option>
+          <option value="3 IU">3 IU</option>
+          <option value="4 IU">4 IU</option>
+          <option value="5 IU">5 IU</option>
+          <option value="6 IU">6 IU</option>
+          <option value="7 IU">7 IU</option>
+          <option value="8 IU">8 IU</option>
+          <option value="10 IU">10 IU</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>State</label>
+        <select id="m-state">
+          <option value="fasted">Fasted</option>
+          <option value="fed">Fed</option>
+        </select>
+      </div>
+      <div class="form-group full">
+        <label>Note (optional)</label>
+        <input type="text" id="m-note">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://lzhkbbwcjfsvpkpmcwdu.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6aGtiYndjamZzdnBrcG1jd2R1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NTUzNDUsImV4cCI6MjA5MTQzMTM0NX0.GhbRy4qhwHbcLgPcp0v5JEtC_oS95O7sh0yl7VXxgDI";
+
+/* ── helpers ── */
+function toSortable(d) { const [dd,mm,yy] = d.split('.'); return `${yy}-${mm}-${dd}`; }
+function toDisplay(iso) { const [y,m,d] = iso.split('-'); return `${d}.${m}.${y}`; }
+function toISO(disp) { if (!disp) return ''; const [d,m,y] = disp.split('.'); return `${y}-${m}-${d}`; }
+
+async function apiFetch(path, options = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      "Prefer": "return=representation",
+      ...options.headers
+    },
+    ...options
+  });
+  if (!res.ok) { const e = await res.text(); throw new Error(e); }
+  const t = await res.text();
+  return t ? JSON.parse(t) : [];
+}
+
+async function loadData() {
+  const rows = await apiFetch("blood_glucose?select=*");
+  // ascending for chart logic, we reverse for table display
+  return rows.sort((a, b) => {
+    const da = toSortable(a.date) + a.time;
+    const db = toSortable(b.date) + b.time;
+    return da.localeCompare(db);
+  });
+}
+
+function classify(v, note) {
+  const sick = note && note.toLowerCase().includes('stomach virus');
+  if (v < 70)   return { cls:"low",      badge:"badge-low",      label:"⚠ Low",      text:"Hypoglycemia – monitor closely on HGH protocol." };
+  if (v <= 99)  return { cls:"normal",   badge:"badge-normal",   label:"✓ Normal",   text:"Optimal fasting value. Protocol is working well." };
+  if (v <= 125) return { cls:"elevated", badge:"badge-elevated", label:"~ Elevated", text: sick ? "Elevated due to stomach virus – stress cortisol response, not HGH-related." : "Borderline. Typical for HGH use – monitor insulin sensitivity." };
+  return        { cls:"high",    badge:"badge-high",    label:"✕ High",    text: sick ? "Significantly elevated due to stomach virus – illness-related, not protocol-relevant." : "Significantly elevated. HGH-induced IR possible – track closely." };
+}
+
+/* ── state ── */
+let allData      = [];   // asc sorted
+let activePhase  = "all";
+let activeState  = "all";
+let editingId    = null;
+let chartDays    = 30;
+let chartMode    = "days";   // "days" | "all" | "custom"
+let customFrom   = null;
+let customTo     = null;
+let glucoseChart = null;
+
+function getFiltered() {
+  return allData.filter(r => {
+    const phaseOk = activePhase === "all" || r.phase === activePhase;
+    const stateOk = activeState === "all" || (r.state || "fasted") === activeState;
+    return phaseOk && stateOk;
+  });
+}
+
+/* ── phase filter buttons ── */
+function updatePhaseFilterButtons() {
+  const phases = [...new Set(allData.map(r => r.phase))].sort();
+  const container = document.getElementById('filters-phase');
+  const existing = [...container.querySelectorAll('[data-phase]:not([data-phase="all"])')].map(b => b.dataset.phase);
+  phases.forEach(p => {
+    if (!existing.includes(p)) {
+      const btn = document.createElement('button');
+      btn.className = 'filter-btn';
+      btn.dataset.phase = p;
+      btn.textContent = p;
+      container.appendChild(btn);
+    }
+  });
+}
+
+/* ── chart ── */
+function buildChart(filtered) {
+  let inRange;
+
+  if (chartMode === "all") {
+    inRange = filtered;
+  } else if (chartMode === "custom" && customFrom && customTo) {
+    inRange = filtered.filter(r => {
+      const d = toSortable(r.date);
+      return d >= customFrom && d <= customTo;
+    });
+  } else {
+    const now = new Date();
+    const cutoff = new Date(now);
+    cutoff.setDate(cutoff.getDate() - chartDays);
+    inRange = filtered.filter(r => {
+      const d = new Date(toSortable(r.date));
+      return d >= cutoff && d <= now;
+    });
+  }
+
+  const labels = inRange.map(r => r.date);
+  const values = inRange.map(r => r.val);
+
+  // point colors
+  const pointColors = values.map(v => {
+    if (v < 70)   return '#ff9100';
+    if (v <= 99)  return '#39d98a';
+    if (v <= 125) return '#ffd166';
+    return '#ff4757';
+  });
+
+  if (glucoseChart) glucoseChart.destroy();
+
+  const ctx = document.getElementById('glucoseChart').getContext('2d');
+  glucoseChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Blood Glucose',
+          data: values,
+          borderColor: '#ff6a00',
+          backgroundColor: 'rgba(255,106,0,0.08)',
+          borderWidth: 2,
+          pointBackgroundColor: pointColors,
+          pointBorderColor: pointColors,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          tension: 0.3,
+          fill: true,
+        },
+        {
+          label: 'Elevated threshold',
+          data: Array(labels.length).fill(100),
+          borderColor: 'rgba(255,209,102,0.5)',
+          borderWidth: 1,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          fill: false,
+        },
+        {
+          label: 'Low threshold',
+          data: Array(labels.length).fill(70),
+          borderColor: 'rgba(255,106,0,0.45)',
+          borderWidth: 1,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          fill: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1a1a',
+          borderColor: '#2a2a2a',
+          borderWidth: 1,
+          titleColor: '#ff6a00',
+          bodyColor: '#c8c8c8',
+          titleFont: { family: "'IBM Plex Mono', monospace", size: 11 },
+          bodyFont:  { family: "'IBM Plex Mono', monospace", size: 11 },
+          padding: 10,
+          callbacks: {
+            label: ctx => {
+              if (ctx.datasetIndex !== 0) return null;
+              const note = inRange[ctx.dataIndex]?.note;
+              const lines = [` ${ctx.parsed.y} mg/dL`];
+              if (note) lines.push(` ${note}`);
+              return lines;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: '#1c1c1c' },
+          ticks: {
+            color: '#555',
+            font: { family: "'IBM Plex Mono', monospace", size: 10 },
+            maxTicksLimit: 8,
+          }
+        },
+        y: {
+          grid: { color: '#1c1c1c' },
+          ticks: {
+            color: '#555',
+            font: { family: "'IBM Plex Mono', monospace", size: 10 },
+            callback: v => v + ' mg/dL'
+          },
+          suggestedMin: 60,
+          suggestedMax: 120,
+        }
+      }
+    }
+  });
+}
+
+/* ── table render ── */
+function render() {
+  const filtered = getFiltered();
+  const vals = filtered.map(r => r.val);
+  const tbody = document.getElementById('tbody');
+
+  if (vals.length === 0) {
+    document.getElementById('avg').textContent   = "—";
+    document.getElementById('minv').textContent  = "—";
+    document.getElementById('maxv').textContent  = "—";
+    document.getElementById('count').textContent = "0";
+    tbody.innerHTML = `<tr><td colspan="8" class="loading">No data for this filter.</td></tr>`;
+    buildChart([]);
+    return;
+  }
+
+  document.getElementById('avg').textContent   = Math.round(vals.reduce((a,b) => a+b,0) / vals.length);
+  document.getElementById('minv').textContent  = Math.min(...vals);
+  document.getElementById('maxv').textContent  = Math.max(...vals);
+  document.getElementById('count').textContent = vals.length;
+
+  // Table: descending (newest first)
+  const descFiltered = [...filtered].reverse();
+  tbody.innerHTML = "";
+  descFiltered.forEach(row => {
+    const c     = classify(row.val, row.note);
+    const state = row.state || "fasted";
+    const tr    = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="td-date">${row.date}</td>
+      <td class="td-time">${row.time}</td>
+      <td class="td-val val-${c.cls}">${row.val} <span style="font-size:0.63rem;font-weight:400;color:var(--text-dim)">mg/dL</span></td>
+      <td class="td-cell">${row.phase}</td>
+      <td><span class="state-${state}">${state.charAt(0).toUpperCase()+state.slice(1)}</span></td>
+      <td class="td-cell">${row.note || ""}</td>
+      <td>
+        <span class="badge ${c.badge}">${c.label}</span>
+        <div class="assessment-text">${c.text}</div>
+      </td>
+      <td>
+        <div class="row-actions">
+          <button class="btn-icon btn-edit" onclick="openEdit('${row.id}')">Edit</button>
+          <button class="btn-icon btn-delete" onclick="deleteEntry('${row.id}')">Del</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Chart: ascending (chronological)
+  buildChart(filtered);
+}
+
+/* ── ADD ── */
+async function addEntry() {
+  const dateISO = document.getElementById('f-date').value;
+  const time    = document.getElementById('f-time').value.trim();
+  const val     = parseInt(document.getElementById('f-val').value);
+  const phase   = document.getElementById('f-phase').value;
+  const state   = document.getElementById('f-state').value;
+  const note    = document.getElementById('f-note').value.trim();
+  const msg     = document.getElementById('form-msg');
+  const btn     = document.getElementById('btn-add');
+
+  if (!dateISO || !time || isNaN(val)) {
+    msg.textContent = "Date, time and value are required.";
+    msg.className = "form-msg err";
+    return;
+  }
+
+  const date = toDisplay(dateISO);
+  btn.disabled = true;
+  msg.textContent = "Saving...";
+  msg.className = "form-msg";
+
+  try {
+    await apiFetch("blood_glucose", { method: "POST", body: JSON.stringify([{ date, time, val, phase, state, note }]) });
+    msg.textContent = `✓ Saved – ${date} · ${time} · ${val} mg/dL · ${state}`;
+    msg.className = "form-msg ok";
+    document.getElementById('f-date').value = "";
+    document.getElementById('f-time').value = "";
+    document.getElementById('f-val').value  = "";
+    document.getElementById('f-note').value = "";
+    allData = await loadData();
+    updatePhaseFilterButtons();
+    render();
+  } catch(e) {
+    msg.textContent = "Error: " + e.message;
+    msg.className = "form-msg err";
+  }
+  btn.disabled = false;
+}
+
+/* ── DELETE ── */
+async function deleteEntry(id) {
+  if (!confirm("Delete this entry?")) return;
+  try {
+    await apiFetch(`blood_glucose?id=eq.${id}`, { method: "DELETE", headers: { "Prefer": "" } });
+    allData = await loadData();
+    render();
+  } catch(e) { alert("Error: " + e.message); }
+}
+
+/* ── EDIT ── */
+function openEdit(id) {
+  const row = allData.find(r => r.id === id);
+  if (!row) return;
+  editingId = id;
+  document.getElementById('m-date').value  = toISO(row.date);
+  document.getElementById('m-time').value  = row.time;
+  document.getElementById('m-val').value   = row.val;
+  document.getElementById('m-phase').value = row.phase;
+  document.getElementById('m-state').value = row.state || "fasted";
+  document.getElementById('m-note').value  = row.note || "";
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  editingId = null;
+}
+
+async function saveEdit() {
+  const dateISO = document.getElementById('m-date').value;
+  const time    = document.getElementById('m-time').value.trim();
+  const val     = parseInt(document.getElementById('m-val').value);
+  const phase   = document.getElementById('m-phase').value;
+  const state   = document.getElementById('m-state').value;
+  const note    = document.getElementById('m-note').value.trim();
+
+  if (!dateISO || !time || isNaN(val)) { alert("Date, time and value are required."); return; }
+
+  const date = toDisplay(dateISO);
+  try {
+    await apiFetch(`blood_glucose?id=eq.${editingId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ date, time, val, phase, state, note })
+    });
+    closeModal();
+    allData = await loadData();
+    updatePhaseFilterButtons();
+    render();
+  } catch(e) { alert("Error: " + e.message); }
+}
+
+/* ── EVENT LISTENERS ── */
+document.getElementById('filters-phase').addEventListener('click', e => {
+  const btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+  document.querySelectorAll('#filters-phase .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activePhase = btn.dataset.phase;
+  render();
+});
+
+document.getElementById('filters-state').addEventListener('click', e => {
+  const btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+  document.querySelectorAll('#filters-state .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeState = btn.dataset.state;
+  render();
+});
+
+document.querySelectorAll('.range-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const val = btn.dataset.days;
+    const customEl = document.getElementById('custom-range');
+
+    if (val === "custom") {
+      chartMode = "custom";
+      customEl.classList.add('visible');
+      // pre-fill to/from if empty
+      if (!document.getElementById('chart-to').value) {
+        const today = new Date();
+        document.getElementById('chart-to').value = today.toISOString().slice(0,10);
+      }
+      if (!document.getElementById('chart-from').value) {
+        const from = new Date();
+        from.setDate(from.getDate() - 30);
+        document.getElementById('chart-from').value = from.toISOString().slice(0,10);
+      }
+    } else {
+      customEl.classList.remove('visible');
+      if (val === "0") {
+        chartMode = "all";
+      } else {
+        chartMode = "days";
+        chartDays = parseInt(val);
+      }
+      buildChart(getFiltered());
+    }
+  });
+});
+
+function applyCustomRange() {
+  const from = document.getElementById('chart-from').value;
+  const to   = document.getElementById('chart-to').value;
+  if (!from || !to) return;
+  customFrom = from;
+  customTo   = to;
+  chartMode  = "custom";
+  buildChart(getFiltered());
+}
+
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+/* ── INIT ── */
+(async () => {
+  try {
+    allData = await loadData();
+    updatePhaseFilterButtons();
+    render();
+  } catch(e) {
+    document.getElementById('tbody').innerHTML =
+      `<tr><td colspan="8" class="loading" style="color:var(--red)">Failed to load: ${e.message}</td></tr>`;
+  }
+})();
+</script>
+</body>
+</html>
