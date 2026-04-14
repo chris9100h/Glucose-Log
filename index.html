@@ -365,6 +365,26 @@
   .filter-btn:hover { border-color: var(--accent); color: var(--text); }
   .filter-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
 
+  /* FILTER SELECT */
+  .filter-select {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    padding: 5px 10px;
+    height: 30px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-dim);
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.15s, color 0.15s;
+    appearance: auto;
+    min-width: 160px;
+  }
+  .filter-select:focus,
+  .filter-select.active { border-color: var(--accent); color: var(--accent); }
+  .filter-select option { background: #111; color: var(--text); }
+
   .state-fasted {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 0.67rem;
@@ -703,31 +723,31 @@
 <div class="filter-section">
   <div class="filter-row">
     <span class="filter-row-label">Phase</span>
-    <div id="filters-phase" style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="filter-btn active" data-phase="all">All</button>
-      <button class="filter-btn" data-phase="2 IU">2 IU</button>
-      <button class="filter-btn" data-phase="3 IU">3 IU</button>
-      <button class="filter-btn" data-phase="4 IU">4 IU</button>
-    </div>
+    <select id="filter-phase-select" onchange="onPhaseFilterChange(this.value)" class="filter-select">
+      <option value="all">All</option>
+      <option value="2 IU">2 IU</option>
+      <option value="3 IU">3 IU</option>
+      <option value="4 IU">4 IU</option>
+    </select>
   </div>
   <div class="filter-row">
     <span class="filter-row-label">State</span>
-    <div id="filters-state" style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="filter-btn active" data-state="all">All</button>
-      <button class="filter-btn" data-state="fasted">Fasted</button>
-      <button class="filter-btn" data-state="fed">Fed</button>
-    </div>
+    <select id="filter-state-select" onchange="onStateFilterChange(this.value)" class="filter-select">
+      <option value="all">All</option>
+      <option value="fasted">Fasted</option>
+      <option value="fed">Fed</option>
+    </select>
   </div>
   <div class="filter-row">
     <span class="filter-row-label">Context</span>
-    <div id="filters-context" style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="filter-btn active" data-context="all">All</button>
-      <button class="filter-btn" data-context="">None</button>
-      <button class="filter-btn" data-context="Sick / Digestive issues">Sick / Digestive issues</button>
-      <button class="filter-btn" data-context="Stress / Poor sleep">Stress / Poor sleep</button>
-      <button class="filter-btn" data-context="Refeed / Cheat">Refeed / Cheat</button>
-      <button class="filter-btn" data-context="Date night / Eating out">Date night / Eating out</button>
-    </div>
+    <select id="filter-context-select" onchange="onContextFilterChange(this.value)" class="filter-select">
+      <option value="all">All</option>
+      <option value="">None</option>
+      <option value="Sick / Digestive issues">Sick / Digestive issues</option>
+      <option value="Stress / Poor sleep">Stress / Poor sleep</option>
+      <option value="Refeed / Cheat">Refeed / Cheat</option>
+      <option value="Date night / Eating out">Date night / Eating out</option>
+    </select>
   </div>
 </div>
 
@@ -907,20 +927,23 @@ function getFiltered() {
   });
 }
 
-/* ── phase filter buttons ── */
-function updatePhaseFilterButtons() {
+/* ── phase filter dropdown ── */
+function updatePhaseFilterDropdown() {
   const phases = [...new Set(allData.map(r => r.phase))].sort();
-  const container = document.getElementById('filters-phase');
-  const existing = [...container.querySelectorAll('[data-phase]:not([data-phase="all"])')].map(b => b.dataset.phase);
+  const sel = document.getElementById('filter-phase-select');
+  const current = sel.value;
+  // keep All + add any new phases
+  const existing = [...sel.options].map(o => o.value).filter(v => v !== "all");
   phases.forEach(p => {
     if (!existing.includes(p)) {
-      const btn = document.createElement('button');
-      btn.className = 'filter-btn';
-      btn.dataset.phase = p;
-      btn.textContent = p;
-      container.appendChild(btn);
+      const opt = document.createElement('option');
+      opt.value = p;
+      opt.textContent = p;
+      sel.appendChild(opt);
     }
   });
+  sel.value = current || "all";
+  updateSelectStyle(sel);
 }
 
 /* ── chart ── */
@@ -1136,7 +1159,7 @@ async function addEntry() {
     document.getElementById('f-context').value = "";
     document.getElementById('f-note').value    = "";
     allData = await loadData();
-    updatePhaseFilterButtons();
+    updatePhaseFilterDropdown();
     render();
   } catch(e) {
     msg.textContent = "Error: " + e.message;
@@ -1194,7 +1217,7 @@ async function saveEdit() {
     });
     closeModal();
     allData = await loadData();
-    updatePhaseFilterButtons();
+    updatePhaseFilterDropdown();
     render();
   } catch(e) { alert("Error: " + e.message); }
 }
@@ -1211,32 +1234,31 @@ document.addEventListener('click', e => {
 });
 
 /* ── EVENT LISTENERS ── */
-document.getElementById('filters-phase').addEventListener('click', e => {
-  const btn = e.target.closest('.filter-btn');
-  if (!btn) return;
-  document.querySelectorAll('#filters-phase .filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  activePhase = btn.dataset.phase;
-  render();
-});
+function updateSelectStyle(sel) {
+  if (sel.value === "all" || sel.value === "") {
+    sel.classList.remove('active');
+  } else {
+    sel.classList.add('active');
+  }
+}
 
-document.getElementById('filters-state').addEventListener('click', e => {
-  const btn = e.target.closest('.filter-btn');
-  if (!btn) return;
-  document.querySelectorAll('#filters-state .filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  activeState = btn.dataset.state;
+function onPhaseFilterChange(val) {
+  activePhase = val;
+  updateSelectStyle(document.getElementById('filter-phase-select'));
   render();
-});
+}
 
-document.getElementById('filters-context').addEventListener('click', e => {
-  const btn = e.target.closest('.filter-btn');
-  if (!btn) return;
-  document.querySelectorAll('#filters-context .filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  activeContext = btn.dataset.context;
+function onStateFilterChange(val) {
+  activeState = val;
+  updateSelectStyle(document.getElementById('filter-state-select'));
   render();
-});
+}
+
+function onContextFilterChange(val) {
+  activeContext = val;
+  updateSelectStyle(document.getElementById('filter-context-select'));
+  render();
+}
 
 document.querySelectorAll('.range-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1289,7 +1311,7 @@ document.getElementById('modal').addEventListener('click', e => {
 (async () => {
   try {
     allData = await loadData();
-    updatePhaseFilterButtons();
+    updatePhaseFilterDropdown();
     render();
   } catch(e) {
     document.getElementById('tbody').innerHTML =
