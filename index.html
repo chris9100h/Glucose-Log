@@ -750,10 +750,12 @@
       <label>Context</label>
       <select id="f-context">
         <option value="" selected>— None —</option>
+        <option value="Date night / Eating out">Date night / Eating out</option>
+        <option value="Post Workout">Post Workout</option>
+        <option value="Pre Workout">Pre Workout</option>
+        <option value="Refeed / Cheat">Refeed / Cheat</option>
         <option value="Sick / Digestive issues">Sick / Digestive issues</option>
         <option value="Stress / Poor sleep">Stress / Poor sleep</option>
-        <option value="Refeed / Cheat">Refeed / Cheat</option>
-        <option value="Date night / Eating out">Date night / Eating out</option>
       </select>
     </div>
     <div class="form-group">
@@ -833,10 +835,12 @@
       <option value="all">All</option>
       <option value="">None</option>
       <option value="__any__">Any</option>
+      <option value="Date night / Eating out">Date night / Eating out</option>
+      <option value="Post Workout">Post Workout</option>
+      <option value="Pre Workout">Pre Workout</option>
+      <option value="Refeed / Cheat">Refeed / Cheat</option>
       <option value="Sick / Digestive issues">Sick / Digestive issues</option>
       <option value="Stress / Poor sleep">Stress / Poor sleep</option>
-      <option value="Refeed / Cheat">Refeed / Cheat</option>
-      <option value="Date night / Eating out">Date night / Eating out</option>
     </select>
   </div>
 </div>
@@ -913,10 +917,12 @@
         <label>Context</label>
         <select id="m-context">
           <option value="">— None —</option>
+          <option value="Date night / Eating out">Date night / Eating out</option>
+          <option value="Post Workout">Post Workout</option>
+          <option value="Pre Workout">Pre Workout</option>
+          <option value="Refeed / Cheat">Refeed / Cheat</option>
           <option value="Sick / Digestive issues">Sick / Digestive issues</option>
           <option value="Stress / Poor sleep">Stress / Poor sleep</option>
-          <option value="Refeed / Cheat">Refeed / Cheat</option>
-          <option value="Date night / Eating out">Date night / Eating out</option>
         </select>
       </div>
       <div class="form-group full">
@@ -967,21 +973,30 @@ async function loadData() {
 }
 
 function classify(v, context) {
-  const ctx = context || "";
+  const ctx     = context || "";
   const sick    = ctx === "Sick / Digestive issues";
   const stress  = ctx === "Stress / Poor sleep";
   const refeed  = ctx === "Refeed / Cheat";
   const eating  = ctx === "Date night / Eating out";
-  const anyCtx  = sick || stress || refeed || eating;
+  const prewo   = ctx === "Pre Workout";
+  const postwo  = ctx === "Post Workout";
+  const anyCtx  = sick || stress || refeed || eating || prewo || postwo;
 
-  if (v < 70) return { cls:"low", badge:"badge-low", label:"⚠ Low", text:"Hypoglycemia – monitor closely on HGH protocol." };
+  if (v < 70) return { cls:"low", badge:"badge-low", label:"⚠ Low", text:
+    postwo ? "Low after workout – glucose was utilized during training. Expected and healthy." :
+    "Hypoglycemia – monitor closely on HGH protocol."
+  };
 
   if (v <= 99) return { cls:"normal", badge:"badge-normal", label:"✓ Normal", text:
+    prewo  ? "Normal pre workout – carb intake may not have peaked yet, or good insulin sensitivity." :
+    postwo ? "Normal post workout – good glucose utilization during training." :
     anyCtx ? "Normal despite the context – good insulin response." :
     "Optimal fasting value. Protocol is working well."
   };
 
   if (v <= 125) return { cls:"elevated", badge:"badge-elevated", label:"~ Elevated", text:
+    prewo  ? "Elevated pre workout – expected after carb loading. Should drop during training." :
+    postwo ? "Elevated post workout – glucose not fully cleared. Monitor recovery." :
     sick   ? "Elevated – likely stress cortisol from illness/digestive issues, not HGH-related." :
     stress ? "Elevated – cortisol from stress or poor sleep can raise fasting glucose. Not protocol-related." :
     refeed ? "Elevated – expected after a refeed or cheat. Should normalise within 24h." :
@@ -990,6 +1005,8 @@ function classify(v, context) {
   };
 
   return { cls:"high", badge:"badge-high", label:"✕ High", text:
+    prewo  ? "Significantly elevated pre workout – high carb load. Watch post-workout and next fasting value." :
+    postwo ? "Significantly elevated post workout – glucose not cleared during training. Consider adjusting pre-wo carbs." :
     sick   ? "Significantly elevated – illness/digestive stress response. Not protocol-relevant, monitor recovery." :
     stress ? "Significantly elevated – severe cortisol spike likely. Review sleep and stress load." :
     refeed ? "Significantly elevated after refeed/cheat – consider adjusting carb intake next time." :
