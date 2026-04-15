@@ -609,14 +609,66 @@
     text-align: center;
   }
 
+  /* MOBILE CARDS */
+  .entry-cards { display: none; }
+
+  .entry-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+
+  .entry-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+
+  .entry-card-date {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+
+  .entry-card-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+
+  .entry-card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .entry-card-note {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+  }
+
+  .entry-card-assessment {
+    margin-bottom: 10px;
+  }
+
+  .entry-card-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
   @media (max-width: 800px) {
     .form-row-top    { grid-template-columns: 1fr 1fr; }
     .form-row-bottom { grid-template-columns: 1fr 1fr; }
     .stats-row { grid-template-columns: repeat(2, 1fr); }
-    table { font-size: 0.73rem; }
-    td { padding: 8px 6px; }
-    thead th { padding: 7px 6px; }
     .chart-wrap { height: 180px; }
+    table { display: none; }
+    .entry-cards { display: block; }
   }
 
   @media (max-width: 500px) {
@@ -816,6 +868,8 @@
     <tr><td colspan="8" class="loading">Loading data...</td></tr>
   </tbody>
 </table>
+
+<div class="entry-cards" id="entry-cards"></div>
 
 <!-- EDIT MODAL -->
 <div class="modal-overlay" id="modal">
@@ -1137,11 +1191,16 @@ function render() {
   // Table: descending (newest first)
   const descFiltered = [...filtered].reverse();
   tbody.innerHTML = "";
+  const cards = document.getElementById('entry-cards');
+  cards.innerHTML = "";
+
   descFiltered.forEach(row => {
     const c       = classify(row.val, row.context);
     const state   = row.state || "fasted";
     const context = row.context || "";
-    const tr      = document.createElement('tr');
+
+    // TABLE ROW
+    const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="td-date">${row.date}</td>
       <td class="td-time">${row.time}</td>
@@ -1162,6 +1221,33 @@ function render() {
       </td>
     `;
     tbody.appendChild(tr);
+
+    // MOBILE CARD
+    const card = document.createElement('div');
+    card.className = 'entry-card';
+    card.innerHTML = `
+      <div class="entry-card-header">
+        <div>
+          <div class="entry-card-date">${row.date} · ${row.time}</div>
+          <div class="entry-card-val val-${c.cls}" style="margin-top:4px;">${row.val} <span style="font-size:0.65rem;font-weight:400;color:var(--text-dim)">mg/dL</span></div>
+        </div>
+        <span class="badge ${c.badge}">${c.label}</span>
+      </div>
+      <div class="entry-card-tags">
+        <span class="state-${state}">${state.charAt(0).toUpperCase()+state.slice(1)}</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:0.67rem;color:var(--text-dim);">${row.phase}</span>
+        ${context ? `<span class="context-badge">${context}</span>` : ""}
+      </div>
+      ${row.note ? `<div class="entry-card-note">${row.note}</div>` : ""}
+      <div class="entry-card-assessment">
+        <div class="assessment-text">${c.text}</div>
+      </div>
+      <div class="entry-card-actions">
+        <button class="btn-icon btn-edit" onclick="openEdit('${row.id}')">Edit</button>
+        <button class="btn-icon btn-delete" onclick="deleteEntry('${row.id}')">Del</button>
+      </div>
+    `;
+    cards.appendChild(card);
   });
 
   // Chart: ascending (chronological)
