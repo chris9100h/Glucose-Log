@@ -963,7 +963,7 @@ async function apiFetch(path, options = {}) {
 }
 
 async function loadData() {
-  const rows = await apiFetch("blood_glucose?select=*");
+  const rows = await apiFetch("bg_blood_glucose?select=*");
   // ascending for chart logic, we reverse for table display
   return rows.sort((a, b) => {
     const da = toSortable(a.date) + a.time;
@@ -1295,7 +1295,7 @@ async function addEntry() {
   msg.className = "form-msg";
 
   try {
-    await apiFetch("blood_glucose", { method: "POST", body: JSON.stringify([{ date, time, val, phase, state, context, note }]) });
+    await apiFetch("bg_blood_glucose", { method: "POST", body: JSON.stringify([{ date, time, val, phase, state, context, note }]) });
     msg.textContent = `✓ Saved – ${date} · ${time} · ${val} mg/dL · ${state}`;
     msg.className = "form-msg ok";
     document.getElementById('f-date').value    = "";
@@ -1317,7 +1317,7 @@ async function addEntry() {
 async function deleteEntry(id) {
   if (!confirm("Delete this entry?")) return;
   try {
-    await apiFetch(`blood_glucose?id=eq.${id}`, { method: "DELETE" });
+    await apiFetch(`bg_blood_glucose?id=eq.${id}`, { method: "DELETE" });
     allData = await loadData();
     render();
   } catch(e) { alert("Error: " + e.message); }
@@ -1356,7 +1356,7 @@ async function saveEdit() {
 
   const date = toDisplay(dateISO);
   try {
-    await apiFetch(`blood_glucose?id=eq.${editingId}`, {
+    await apiFetch(`bg_blood_glucose?id=eq.${editingId}`, {
       method: "PATCH",
       body: JSON.stringify({ date, time, val, phase, state, context, note })
     });
