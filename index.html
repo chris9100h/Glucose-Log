@@ -680,11 +680,41 @@
 </head>
 <body>
 
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="display:none; min-height:100vh; align-items:center; justify-content:center; padding:20px;">
+  <div style="width:100%; max-width:360px;">
+    <div style="border-left:3px solid var(--accent); padding-left:14px; margin-bottom:32px;">
+      <div style="font-family:'IBM Plex Mono',monospace; font-size:1.15rem; color:var(--accent); letter-spacing:0.1em; text-transform:uppercase;">Blood Glucose — Log</div>
+      <div style="font-size:0.75rem; color:var(--text-dim); margin-top:5px; font-family:'IBM Plex Mono',monospace;">HGH Protocol · evenings · mg/dL</div>
+    </div>
+    <div class="form-card">
+      <div class="form-title">Sign In</div>
+      <form id="login-form">
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>Email</label>
+          <input type="email" id="login-email" placeholder="you@example.com" autocomplete="email" required>
+        </div>
+        <div class="form-group" style="margin-bottom:16px;">
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+        <button type="submit" id="login-btn" class="btn-add" style="width:100%;">Sign In</button>
+      </form>
+      <div class="form-msg" id="login-msg" style="margin-top:10px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-root" style="display:none;">
+
 <header>
   <div class="header-left">
     <h1>Blood Glucose — Log</h1>
     <p>HGH Protocol · evenings · mg/dL</p>
   </div>
+  <div style="display:flex; align-items:center; gap:12px;">
+    <button onclick="handleLogout()" style="font-family:'IBM Plex Mono',monospace; font-size:0.62rem; text-transform:uppercase; letter-spacing:0.07em; padding:4px 12px; border-radius:4px; border:1px solid var(--border); background:transparent; color:var(--text-dim); cursor:pointer; transition:all 0.15s;" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">Sign Out</button>
   <div class="app-switcher">
     <button class="apps-btn" id="apps-btn" onclick="toggleAppsMenu()">
       <span></span><span></span>
@@ -705,6 +735,7 @@
         <span class="app-label">Glucose Log</span>
       </a>
     </div>
+  </div>
   </div>
 </header>
 
@@ -940,7 +971,68 @@
 
 <script>
 const SUPABASE_URL = "https://lzhkbbwcjfsvpkpmcwdu.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6aGtiYndjamZzdnBrcG1jd2R1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NTUzNDUsImV4cCI6MjA5MTQzMTM0NX0.GhbRy4qhwHbcLgPcp0v5JEtC_oS95O7sh0yl7VXxgDI";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6aGtiYndjamZzdnBrcG1jd2R1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4NTUzNDUsImV4cCI6MjA5MTQzMTM0NX0.GhbRy4qhwHbcLgPcp0v5JEtC_oS95O7sh0yl7VXxgDI";
+
+/* ── auth state ── */
+let authSession = null;
+
+function getAccessToken() {
+  return authSession?.access_token || SUPABASE_ANON_KEY;
+}
+
+async function signIn(email, password) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: {
+      "apikey": SUPABASE_ANON_KEY,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email, password })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error_description || data.msg || "Login failed");
+  return data;
+}
+
+async function refreshSession(refresh_token) {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+    method: "POST",
+    headers: {
+      "apikey": SUPABASE_ANON_KEY,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ refresh_token })
+  });
+  const data = await res.json();
+  if (!res.ok) return null;
+  return data;
+}
+
+function saveSession(session) {
+  authSession = session;
+  localStorage.setItem("gl_session", JSON.stringify(session));
+}
+
+function clearSession() {
+  authSession = null;
+  localStorage.removeItem("gl_session");
+}
+
+async function initAuth() {
+  const stored = localStorage.getItem("gl_session");
+  if (!stored) return false;
+  try {
+    const session = JSON.parse(stored);
+    // try to refresh to verify it's still valid
+    const refreshed = await refreshSession(session.refresh_token);
+    if (refreshed) {
+      saveSession(refreshed);
+      return true;
+    }
+  } catch {}
+  clearSession();
+  return false;
+}
 
 /* ── helpers ── */
 function toSortable(d) { const [dd,mm,yy] = d.split('.'); return `${yy}-${mm}-${dd}`; }
@@ -948,10 +1040,11 @@ function toDisplay(iso) { const [y,m,d] = iso.split('-'); return `${d}.${m}.${y}
 function toISO(disp) { if (!disp) return ''; const [d,m,y] = disp.split('.'); return `${y}-${m}-${d}`; }
 
 async function apiFetch(path, options = {}) {
+  const token = getAccessToken();
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: {
-      "apikey": SUPABASE_KEY,
-      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
       "Prefer": "return=representation",
       ...options.headers
@@ -1453,8 +1546,42 @@ document.getElementById('modal').addEventListener('click', e => {
   if (e.target === e.currentTarget) closeModal();
 });
 
-/* ── INIT ── */
-(async () => {
+/* ── LOGIN SCREEN ── */
+async function handleLogin(e) {
+  e.preventDefault();
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const btn      = document.getElementById('login-btn');
+  const msg      = document.getElementById('login-msg');
+
+  btn.disabled = true;
+  btn.textContent = "Signing in...";
+  msg.textContent = "";
+  msg.className = "form-msg";
+
+  try {
+    const session = await signIn(email, password);
+    saveSession(session);
+    showApp();
+  } catch(err) {
+    msg.textContent = err.message;
+    msg.className = "form-msg err";
+    btn.disabled = false;
+    btn.textContent = "Sign In";
+  }
+}
+
+function handleLogout() {
+  clearSession();
+  document.getElementById('app-root').style.display = "none";
+  document.getElementById('login-screen').style.display = "flex";
+  document.getElementById('login-password').value = "";
+  document.getElementById('login-msg').textContent = "";
+}
+
+async function showApp() {
+  document.getElementById('login-screen').style.display = "none";
+  document.getElementById('app-root').style.display = "block";
   try {
     allData = await loadData();
     updatePhaseFilterDropdown();
@@ -1463,7 +1590,20 @@ document.getElementById('modal').addEventListener('click', e => {
     document.getElementById('tbody').innerHTML =
       `<tr><td colspan="9" class="loading" style="color:var(--red)">Failed to load: ${e.message}</td></tr>`;
   }
+}
+
+/* ── INIT ── */
+(async () => {
+  const loggedIn = await initAuth();
+  if (loggedIn) {
+    showApp();
+  } else {
+    document.getElementById('login-screen').style.display = "flex";
+    document.getElementById('app-root').style.display = "none";
+  }
+  document.getElementById('login-form').addEventListener('submit', handleLogin);
 })();
 </script>
+</div><!-- /app-root -->
 </body>
 </html>
