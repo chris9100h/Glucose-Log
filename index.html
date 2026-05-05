@@ -782,6 +782,8 @@
       <label>Context</label>
       <select id="f-context">
         <option value="" selected>— None —</option>
+        <option value="Pre Insulin">Pre Insulin</option>
+        <option value="Post Insulin">Post Insulin</option>
         <option value="Date night / Eating out">Date night / Eating out</option>
         <option value="Post Workout">Post Workout</option>
         <option value="Pre Workout">Pre Workout</option>
@@ -867,6 +869,8 @@
       <option value="all">All</option>
       <option value="">None</option>
       <option value="__any__">Any</option>
+      <option value="Pre Insulin">Pre Insulin</option>
+      <option value="Post Insulin">Post Insulin</option>
       <option value="Date night / Eating out">Date night / Eating out</option>
       <option value="Post Workout">Post Workout</option>
       <option value="Pre Workout">Pre Workout</option>
@@ -949,6 +953,8 @@
         <label>Context</label>
         <select id="m-context">
           <option value="">— None —</option>
+          <option value="Pre Insulin">Pre Insulin</option>
+          <option value="Post Insulin">Post Insulin</option>
           <option value="Date night / Eating out">Date night / Eating out</option>
           <option value="Post Workout">Post Workout</option>
           <option value="Pre Workout">Pre Workout</option>
@@ -1074,37 +1080,47 @@ function classify(v, context) {
   const eating  = ctx === "Date night / Eating out";
   const prewo   = ctx === "Pre Workout";
   const postwo  = ctx === "Post Workout";
-  const anyCtx  = sick || stress || refeed || eating || prewo || postwo;
+  const preins  = ctx === "Pre Insulin";
+  const postins = ctx === "Post Insulin";
+  const anyCtx  = sick || stress || refeed || eating || prewo || postwo || preins || postins;
 
   if (v < 70) return { cls:"low", badge:"badge-low", label:"⚠ Low", text:
-    postwo ? "Low after workout – glucose was utilized during training. Expected and healthy." :
+    preins  ? "Hypo vor der Injektion – NovoRapid NICHT setzen. Zuerst Kohlenhydrate zuführen und Wert stabilisieren." :
+    postins ? "Hypo im Wirkfenster – NovoRapid noch aktiv! Sofort schnelle KH zuführen (Traubenzucker/Saft). Engmaschig kontrollieren." :
+    postwo  ? "Low after workout – glucose was utilized during training. Expected and healthy." :
     "Hypoglycemia – monitor closely on HGH protocol."
   };
 
   if (v <= 99) return { cls:"normal", badge:"badge-normal", label:"✓ Normal", text:
-    prewo  ? "Normal pre workout – carb intake may not have peaked yet, or good insulin sensitivity." :
-    postwo ? "Normal post workout – good glucose utilization during training." :
-    anyCtx ? "Normal despite the context – good insulin response." :
+    preins  ? "Guter Ausgangswert vor NovoRapid – optimaler Bereich für die Injektion. Protokoll läuft sauber." :
+    postins ? "Gute Insulinantwort – NovoRapid hat den Wert im Zielbereich gehalten. Sensitivität in Ordnung." :
+    prewo   ? "Normal pre workout – carb intake may not have peaked yet, or good insulin sensitivity." :
+    postwo  ? "Normal post workout – good glucose utilization during training." :
+    anyCtx  ? "Normal despite the context – good insulin response." :
     "Optimal fasting value. Protocol is working well."
   };
 
   if (v <= 125) return { cls:"elevated", badge:"badge-elevated", label:"~ Elevated", text:
-    prewo  ? "Elevated pre workout – expected after carb loading. Should drop during training." :
-    postwo ? "Elevated post workout – glucose not fully cleared. Monitor recovery." :
-    sick   ? "Elevated – likely stress cortisol from illness/digestive issues, not HGH-related." :
-    stress ? "Elevated – cortisol from stress or poor sleep can raise fasting glucose. Not protocol-related." :
-    refeed ? "Elevated – expected after a refeed or cheat. Should normalise within 24h." :
-    eating ? "Elevated – dietary intake from eating out. Monitor next fasting reading." :
+    preins  ? "Erhöht vor der Injektion – typische Ausgangslage. NovoRapid sollte den Wert in den Normalbereich bringen." :
+    postins ? "Noch erhöht im Wirkfenster – Insulin arbeitet noch, Peak noch nicht erreicht oder Clearance verzögert. Weiter beobachten." :
+    prewo   ? "Elevated pre workout – expected after carb loading. Should drop during training." :
+    postwo  ? "Elevated post workout – glucose not fully cleared. Monitor recovery." :
+    sick    ? "Elevated – likely stress cortisol from illness/digestive issues, not HGH-related." :
+    stress  ? "Elevated – cortisol from stress or poor sleep can raise fasting glucose. Not protocol-related." :
+    refeed  ? "Elevated – expected after a refeed or cheat. Should normalise within 24h." :
+    eating  ? "Elevated – dietary intake from eating out. Monitor next fasting reading." :
     "Borderline. Typical for HGH use – monitor insulin sensitivity."
   };
 
   return { cls:"high", badge:"badge-high", label:"✕ High", text:
-    prewo  ? "Significantly elevated pre workout – high carb load. Watch post-workout and next fasting value." :
-    postwo ? "Significantly elevated post workout – glucose not cleared during training. Consider adjusting pre-wo carbs." :
-    sick   ? "Significantly elevated – illness/digestive stress response. Not protocol-relevant, monitor recovery." :
-    stress ? "Significantly elevated – severe cortisol spike likely. Review sleep and stress load." :
-    refeed ? "Significantly elevated after refeed/cheat – consider adjusting carb intake next time." :
-    eating ? "Significantly elevated – heavy meal impact. Check if pattern repeats on normal days." :
+    preins  ? "Signifikant erhöht vor der Injektion – hohe Ausgangslast. NovoRapid-Dosis und Kohlenhydratzufuhr überprüfen. Nächsten Nüchternwert im Blick behalten." :
+    postins ? "Signifikant erhöht trotz Insulin im Wirkfenster – mögliche Insulinresistenz oder Unterdosierung. Dosis und Timing mit dem Arzt besprechen." :
+    prewo   ? "Significantly elevated pre workout – high carb load. Watch post-workout and next fasting value." :
+    postwo  ? "Significantly elevated post workout – glucose not cleared during training. Consider adjusting pre-wo carbs." :
+    sick    ? "Significantly elevated – illness/digestive stress response. Not protocol-relevant, monitor recovery." :
+    stress  ? "Significantly elevated – severe cortisol spike likely. Review sleep and stress load." :
+    refeed  ? "Significantly elevated after refeed/cheat – consider adjusting carb intake next time." :
+    eating  ? "Significantly elevated – heavy meal impact. Check if pattern repeats on normal days." :
     "Significantly elevated. HGH-induced IR possible – track closely."
   };
 }
