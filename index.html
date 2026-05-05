@@ -1085,15 +1085,15 @@ function classify(v, context) {
   const anyCtx  = sick || stress || refeed || eating || prewo || postwo || preins || postins;
 
   if (v < 70) return { cls:"low", badge:"badge-low", label:"⚠ Low", text:
-    preins  ? "Hypo vor der Injektion – NovoRapid NICHT setzen. Zuerst Kohlenhydrate zuführen und Wert stabilisieren." :
-    postins ? "Hypo im Wirkfenster – NovoRapid noch aktiv! Sofort schnelle KH zuführen (Traubenzucker/Saft). Engmaschig kontrollieren." :
+    preins  ? "Zu niedrig vor der Injektion – NovoRapid jetzt nicht setzen. Erst 20–30 g schnelle KH aufnehmen und abwarten." :
+    postins ? "Hypo im Wirkfenster – Insulin noch aktiv. Sofort schnelle KH zuführen (Dextrose/Saft), Wert alle 15 min checken." :
     postwo  ? "Low after workout – glucose was utilized during training. Expected and healthy." :
     "Hypoglycemia – monitor closely on HGH protocol."
   };
 
   if (v <= 99) return { cls:"normal", badge:"badge-normal", label:"✓ Normal", text:
-    preins  ? "Guter Ausgangswert vor NovoRapid – optimaler Bereich für die Injektion. Protokoll läuft sauber." :
-    postins ? "Gute Insulinantwort – NovoRapid hat den Wert im Zielbereich gehalten. Sensitivität in Ordnung." :
+    preins  ? "Sauberer Ausgangswert – optimale Basis für die Injektion. Carb-Load danach voll ausnutzen." :
+    postins ? "Saubere Insulinantwort – Glucose wird effizient in den Muskel partitioniert. Sensitivität top." :
     prewo   ? "Normal pre workout – carb intake may not have peaked yet, or good insulin sensitivity." :
     postwo  ? "Normal post workout – good glucose utilization during training." :
     anyCtx  ? "Normal despite the context – good insulin response." :
@@ -1101,8 +1101,8 @@ function classify(v, context) {
   };
 
   if (v <= 125) return { cls:"elevated", badge:"badge-elevated", label:"~ Elevated", text:
-    preins  ? "Erhöht vor der Injektion – typische Ausgangslage. NovoRapid sollte den Wert in den Normalbereich bringen." :
-    postins ? "Noch erhöht im Wirkfenster – Insulin arbeitet noch, Peak noch nicht erreicht oder Clearance verzögert. Weiter beobachten." :
+    preins  ? "Etwas erhöht vor der Injektion – Carb-Timing prüfen. NovoRapid bringt den Wert runter, anaboles Fenster bleibt nutzbar." :
+    postins ? "Glucose noch im Umlauf – Partitionierung läuft, aber noch nicht abgeschlossen. Carb-Menge oder Timing für nächste Einheit prüfen." :
     prewo   ? "Elevated pre workout – expected after carb loading. Should drop during training." :
     postwo  ? "Elevated post workout – glucose not fully cleared. Monitor recovery." :
     sick    ? "Elevated – likely stress cortisol from illness/digestive issues, not HGH-related." :
@@ -1113,8 +1113,8 @@ function classify(v, context) {
   };
 
   return { cls:"high", badge:"badge-high", label:"✕ High", text:
-    preins  ? "Signifikant erhöht vor der Injektion – hohe Ausgangslast. NovoRapid-Dosis und Kohlenhydratzufuhr überprüfen. Nächsten Nüchternwert im Blick behalten." :
-    postins ? "Signifikant erhöht trotz Insulin im Wirkfenster – mögliche Insulinresistenz oder Unterdosierung. Dosis und Timing mit dem Arzt besprechen." :
+    preins  ? "Stark erhöht vor der Injektion – zu viele KH im Vorfeld oder Nüchternwert nicht sauber. Carb-Protokoll vor der Injektion anpassen." :
+    postins ? "Glucose trotz Insulin stark erhöht – schlechte Partitionierung. HGH-induzierte IR oder Carb-Menge zu hoch. Dosis/Timing überdenken." :
     prewo   ? "Significantly elevated pre workout – high carb load. Watch post-workout and next fasting value." :
     postwo  ? "Significantly elevated post workout – glucose not cleared during training. Consider adjusting pre-wo carbs." :
     sick    ? "Significantly elevated – illness/digestive stress response. Not protocol-relevant, monitor recovery." :
