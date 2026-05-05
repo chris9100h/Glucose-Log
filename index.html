@@ -1072,7 +1072,20 @@ async function loadData() {
   });
 }
 
-function classify(v, context) {
+function getMinutesSinceInjection(row, data) {
+  const rowDt = toSortable(row.date) + "T" + row.time;
+  let bestDt = null, bestRow = null;
+  for (const r of data) {
+    if ((r.context || "") !== "Pre Insulin") continue;
+    const rDt = toSortable(r.date) + "T" + r.time;
+    if (rDt <= rowDt && (!bestDt || rDt > bestDt)) { bestDt = rDt; bestRow = r; }
+  }
+  if (!bestRow) return null;
+  const diff = Math.round((new Date(toSortable(row.date) + "T" + row.time) - new Date(toSortable(bestRow.date) + "T" + bestRow.time)) / 60000);
+  return (diff >= 0 && diff <= 240) ? diff : null;
+}
+
+function classify(v, context, minsPost) {
   const ctx     = context || "";
   const sick    = ctx === "Sick / Digestive issues";
   const stress  = ctx === "Stress / Poor sleep";
@@ -1084,16 +1097,31 @@ function classify(v, context) {
   const postins = ctx === "Post Insulin";
   const anyCtx  = sick || stress || refeed || eating || prewo || postwo || preins || postins;
 
+  const t = minsPost;
+  const tStr = t !== null && t !== undefined ? `T+${t}min – ` : "";
+
   if (v < 70) return { cls:"low", badge:"badge-low", label:"⚠ Low", text:
     preins  ? "Zu niedrig vor der Injektion – NovoRapid jetzt nicht setzen. Erst 20–30 g schnelle KH aufnehmen und abwarten." :
-    postins ? "Hypo im Wirkfenster – Insulin noch aktiv. Sofort schnelle KH zuführen (Dextrose/Saft), Wert alle 15 min checken." :
+    postins ? (
+      t === null  ? "Hypo im Wirkfenster – Insulin noch aktiv. Sofort schnelle KH (Dextrose/Saft), Wert alle 15 min checken." :
+      t < 30      ? `${tStr}Hypo bevor Insulin richtig angesetzt hat – Carb-Menge war zu gering. Sofort Dextrose nachschieben.` :
+      t < 90      ? `${tStr}Hypo in der Aufbauphase – Insulin steigt auf Peak. Sofort schnelle KH, engmaschig tracken.` :
+      t < 150     ? `${tStr}Hypo im Peak-Fenster – maximale Insulinwirkung. Sofort 20–30 g Dextrose, nicht alleine bleiben.` :
+                    `${tStr}Hypo in der Abklingphase – Insulin noch aktiv. KH zuführen und Wert beobachten bis Fenster durch.`
+    ) :
     postwo  ? "Low after workout – glucose was utilized during training. Expected and healthy." :
     "Hypoglycemia – monitor closely on HGH protocol."
   };
 
   if (v <= 99) return { cls:"normal", badge:"badge-normal", label:"✓ Normal", text:
     preins  ? "Sauberer Ausgangswert – optimale Basis für die Injektion. Carb-Load danach voll ausnutzen." :
-    postins ? "Saubere Insulinantwort – Glucose wird effizient in den Muskel partitioniert. Sensitivität top." :
+    postins ? (
+      t === null  ? "Saubere Insulinantwort – Glucose wird effizient in den Muskel partitioniert." :
+      t < 30      ? `${tStr}Wert noch im Normalbereich direkt nach Injektion – Carbs können noch weiter ansteigen. Weiter beobachten.` :
+      t < 90      ? `${tStr}Insulin arbeitet sauber – Glucose wird effizient partitioniert. Gute Sensitivität.` :
+      t < 150     ? `${tStr}Peak-Fenster – Glucose wird maximal ins Muskelgewebe gezogen. Optimale Partitionierung.` :
+                    `${tStr}Saubere Clearance – Insulin hat seine Arbeit getan. Nüchternwert sollte stabil folgen.`
+    ) :
     prewo   ? "Normal pre workout – carb intake may not have peaked yet, or good insulin sensitivity." :
     postwo  ? "Normal post workout – good glucose utilization during training." :
     anyCtx  ? "Normal despite the context – good insulin response." :
@@ -1102,7 +1130,13 @@ function classify(v, context) {
 
   if (v <= 125) return { cls:"elevated", badge:"badge-elevated", label:"~ Elevated", text:
     preins  ? "Etwas erhöht vor der Injektion – Carb-Timing prüfen. NovoRapid bringt den Wert runter, anaboles Fenster bleibt nutzbar." :
-    postins ? "Glucose noch im Umlauf – Partitionierung läuft, aber noch nicht abgeschlossen. Carb-Menge oder Timing für nächste Einheit prüfen." :
+    postins ? (
+      t === null  ? "Glucose noch im Umlauf – Partitionierung läuft, aber noch nicht abgeschlossen." :
+      t < 30      ? `${tStr}KH-Spike erwartet – Insulin hat noch kaum angesetzt. Völlig normal, weiter beobachten.` :
+      t < 90      ? `${tStr}Insulin rampt hoch – Wert sollte in den nächsten 30–60 min fallen. Im Rahmen.` :
+      t < 150     ? `${tStr}Im Peak noch erhöht – Clearance etwas langsam. Carb-Menge oder Timing für nächste Einheit prüfen.` :
+                    `${tStr}Zum Fenster-Ende noch erhöht – Partitionierung suboptimal. Carb-Load oder Dosis überdenken.`
+    ) :
     prewo   ? "Elevated pre workout – expected after carb loading. Should drop during training." :
     postwo  ? "Elevated post workout – glucose not fully cleared. Monitor recovery." :
     sick    ? "Elevated – likely stress cortisol from illness/digestive issues, not HGH-related." :
@@ -1114,7 +1148,13 @@ function classify(v, context) {
 
   return { cls:"high", badge:"badge-high", label:"✕ High", text:
     preins  ? "Stark erhöht vor der Injektion – zu viele KH im Vorfeld oder Nüchternwert nicht sauber. Carb-Protokoll vor der Injektion anpassen." :
-    postins ? "Glucose trotz Insulin stark erhöht – schlechte Partitionierung. HGH-induzierte IR oder Carb-Menge zu hoch. Dosis/Timing überdenken." :
+    postins ? (
+      t === null  ? "Glucose trotz Insulin stark erhöht – schlechte Partitionierung. HGH-induzierte IR oder Carb-Menge zu hoch." :
+      t < 30      ? `${tStr}Glucose-Spike vom KH-Load – Insulin hat noch nicht angesetzt. Erwartet und kein Handlungsbedarf.` :
+      t < 90      ? `${tStr}Noch hoch, Insulin nähert sich Peak. Weiter beobachten – wenn kein Abfall kommt, Timing prüfen.` :
+      t < 150     ? `${tStr}Im Peak-Fenster stark erhöht – schlechte Partitionierung oder KH-Überschuss. Nächsten Wert engmaschig tracken.` :
+                    `${tStr}Stark erhöht zum Fenster-Ende – HGH-induzierte IR oder deutlich zu hohe Carb-Menge. Protokoll überdenken.`
+    ) :
     prewo   ? "Significantly elevated pre workout – high carb load. Watch post-workout and next fasting value." :
     postwo  ? "Significantly elevated post workout – glucose not cleared during training. Consider adjusting pre-wo carbs." :
     sick    ? "Significantly elevated – illness/digestive stress response. Not protocol-relevant, monitor recovery." :
@@ -1322,7 +1362,8 @@ function render() {
   cards.innerHTML = "";
 
   descFiltered.forEach(row => {
-    const c       = classify(row.val, row.context);
+    const minsPost = (row.context === "Post Insulin") ? getMinutesSinceInjection(row, allData) : null;
+    const c        = classify(row.val, row.context, minsPost);
     const state   = row.state || "fasted";
     const context = row.context || "";
 
