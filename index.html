@@ -782,6 +782,8 @@
       <label>Context</label>
       <select id="f-context">
         <option value="" selected>— None —</option>
+        <option value="Pre Insulin">Pre Insulin</option>
+        <option value="Post Insulin">Post Insulin</option>
         <option value="Date night / Eating out">Date night / Eating out</option>
         <option value="Post Workout">Post Workout</option>
         <option value="Pre Workout">Pre Workout</option>
@@ -867,6 +869,8 @@
       <option value="all">All</option>
       <option value="">None</option>
       <option value="__any__">Any</option>
+      <option value="Pre Insulin">Pre Insulin</option>
+      <option value="Post Insulin">Post Insulin</option>
       <option value="Date night / Eating out">Date night / Eating out</option>
       <option value="Post Workout">Post Workout</option>
       <option value="Pre Workout">Pre Workout</option>
@@ -949,6 +953,8 @@
         <label>Context</label>
         <select id="m-context">
           <option value="">— None —</option>
+          <option value="Pre Insulin">Pre Insulin</option>
+          <option value="Post Insulin">Post Insulin</option>
           <option value="Date night / Eating out">Date night / Eating out</option>
           <option value="Post Workout">Post Workout</option>
           <option value="Pre Workout">Pre Workout</option>
@@ -1066,7 +1072,20 @@ async function loadData() {
   });
 }
 
-function classify(v, context) {
+function getMinutesSinceInjection(row, data) {
+  const rowDt = toSortable(row.date) + "T" + row.time;
+  let bestDt = null, bestRow = null;
+  for (const r of data) {
+    if ((r.context || "") !== "Pre Insulin") continue;
+    const rDt = toSortable(r.date) + "T" + r.time;
+    if (rDt <= rowDt && (!bestDt || rDt > bestDt)) { bestDt = rDt; bestRow = r; }
+  }
+  if (!bestRow) return null;
+  const diff = Math.round((new Date(toSortable(row.date) + "T" + row.time) - new Date(toSortable(bestRow.date) + "T" + bestRow.time)) / 60000);
+  return (diff >= 0 && diff <= 240) ? diff : null;
+}
+
+function classify(v, context, minsPost) {
   const ctx     = context || "";
   const sick    = ctx === "Sick / Digestive issues";
   const stress  = ctx === "Stress / Poor sleep";
@@ -1074,37 +1093,74 @@ function classify(v, context) {
   const eating  = ctx === "Date night / Eating out";
   const prewo   = ctx === "Pre Workout";
   const postwo  = ctx === "Post Workout";
-  const anyCtx  = sick || stress || refeed || eating || prewo || postwo;
+  const preins  = ctx === "Pre Insulin";
+  const postins = ctx === "Post Insulin";
+  const anyCtx  = sick || stress || refeed || eating || prewo || postwo || preins || postins;
+
+  const t = minsPost;
+  const tStr = t !== null && t !== undefined ? `T+${t}min – ` : "";
 
   if (v < 70) return { cls:"low", badge:"badge-low", label:"⚠ Low", text:
-    postwo ? "Low after workout – glucose was utilized during training. Expected and healthy." :
+    preins  ? "Too low to inject – do not administer NovoRapid. Take 20–30 g fast carbs first and wait for values to stabilise." :
+    postins ? (
+      t === null  ? "Hypo within action window – insulin still active. Take fast carbs (dextrose/juice) immediately and check every 15 min." :
+      t < 30      ? `${tStr}Hypo before insulin has properly kicked in – carb intake was insufficient. Take dextrose now.` :
+      t < 90      ? `${tStr}Hypo during ramp-up phase – insulin approaching peak. Fast carbs immediately, monitor closely.` :
+      t < 150     ? `${tStr}Hypo at peak action – maximum insulin activity. Take 20–30 g dextrose immediately, don't be alone.` :
+                    `${tStr}Hypo during taper phase – insulin still active. Take carbs and monitor until window clears.`
+    ) :
+    postwo  ? "Low after workout – glucose was utilized during training. Expected and healthy." :
     "Hypoglycemia – monitor closely on HGH protocol."
   };
 
   if (v <= 99) return { cls:"normal", badge:"badge-normal", label:"✓ Normal", text:
-    prewo  ? "Normal pre workout – carb intake may not have peaked yet, or good insulin sensitivity." :
-    postwo ? "Normal post workout – good glucose utilization during training." :
-    anyCtx ? "Normal despite the context – good insulin response." :
+    preins  ? "Clean baseline – optimal starting point for injection. Make the most of the carb load after." :
+    postins ? (
+      t === null  ? "Clean insulin response – glucose being efficiently partitioned into muscle." :
+      t < 30      ? `${tStr}Still in range right after injection – carbs may push it higher yet. Keep monitoring.` :
+      t < 90      ? `${tStr}Insulin working cleanly – glucose being efficiently partitioned. Sensitivity is good.` :
+      t < 150     ? `${tStr}Peak window – maximum glucose uptake into muscle tissue. Partitioning is optimal.` :
+                    `${tStr}Clean clearance – insulin has done its job. Fasting value should follow steadily.`
+    ) :
+    prewo   ? "Normal pre workout – carb intake may not have peaked yet, or good insulin sensitivity." :
+    postwo  ? "Normal post workout – good glucose utilization during training." :
+    anyCtx  ? "Normal despite the context – good insulin response." :
     "Optimal fasting value. Protocol is working well."
   };
 
   if (v <= 125) return { cls:"elevated", badge:"badge-elevated", label:"~ Elevated", text:
-    prewo  ? "Elevated pre workout – expected after carb loading. Should drop during training." :
-    postwo ? "Elevated post workout – glucose not fully cleared. Monitor recovery." :
-    sick   ? "Elevated – likely stress cortisol from illness/digestive issues, not HGH-related." :
-    stress ? "Elevated – cortisol from stress or poor sleep can raise fasting glucose. Not protocol-related." :
-    refeed ? "Elevated – expected after a refeed or cheat. Should normalise within 24h." :
-    eating ? "Elevated – dietary intake from eating out. Monitor next fasting reading." :
+    preins  ? "Slightly elevated before injection – check carb timing. NovoRapid will bring it down, anabolic window is still usable." :
+    postins ? (
+      t === null  ? "Glucose still circulating – partitioning in progress but not yet complete." :
+      t < 30      ? `${tStr}Carb spike expected – insulin has barely started. Completely normal, keep watching.` :
+      t < 90      ? `${tStr}Insulin ramping up – value should start dropping in the next 30–60 min. Within range.` :
+      t < 150     ? `${tStr}Still elevated at peak – clearance slightly slow. Review carb amount or timing for next session.` :
+                    `${tStr}Still elevated near end of window – partitioning suboptimal. Reconsider carb load or dosing.`
+    ) :
+    prewo   ? "Elevated pre workout – expected after carb loading. Should drop during training." :
+    postwo  ? "Elevated post workout – glucose not fully cleared. Monitor recovery." :
+    sick    ? "Elevated – likely stress cortisol from illness/digestive issues, not HGH-related." :
+    stress  ? "Elevated – cortisol from stress or poor sleep can raise fasting glucose. Not protocol-related." :
+    refeed  ? "Elevated – expected after a refeed or cheat. Should normalise within 24h." :
+    eating  ? "Elevated – dietary intake from eating out. Monitor next fasting reading." :
     "Borderline. Typical for HGH use – monitor insulin sensitivity."
   };
 
   return { cls:"high", badge:"badge-high", label:"✕ High", text:
-    prewo  ? "Significantly elevated pre workout – high carb load. Watch post-workout and next fasting value." :
-    postwo ? "Significantly elevated post workout – glucose not cleared during training. Consider adjusting pre-wo carbs." :
-    sick   ? "Significantly elevated – illness/digestive stress response. Not protocol-relevant, monitor recovery." :
-    stress ? "Significantly elevated – severe cortisol spike likely. Review sleep and stress load." :
-    refeed ? "Significantly elevated after refeed/cheat – consider adjusting carb intake next time." :
-    eating ? "Significantly elevated – heavy meal impact. Check if pattern repeats on normal days." :
+    preins  ? "Significantly elevated before injection – too many carbs beforehand or baseline not clean. Adjust pre-injection carb protocol." :
+    postins ? (
+      t === null  ? "Glucose significantly elevated despite insulin – poor partitioning. HGH-induced IR or carb load too high." :
+      t < 30      ? `${tStr}Glucose spike from carb load – insulin hasn't kicked in yet. Expected, no action needed.` :
+      t < 90      ? `${tStr}Still high, insulin approaching peak. Monitor – if no drop follows, review timing.` :
+      t < 150     ? `${tStr}Significantly elevated at peak – poor partitioning or carb excess. Track next value closely.` :
+                    `${tStr}Significantly elevated near end of window – HGH-induced IR or carb load too high. Reconsider protocol.`
+    ) :
+    prewo   ? "Significantly elevated pre workout – high carb load. Watch post-workout and next fasting value." :
+    postwo  ? "Significantly elevated post workout – glucose not cleared during training. Consider adjusting pre-wo carbs." :
+    sick    ? "Significantly elevated – illness/digestive stress response. Not protocol-relevant, monitor recovery." :
+    stress  ? "Significantly elevated – severe cortisol spike likely. Review sleep and stress load." :
+    refeed  ? "Significantly elevated after refeed/cheat – consider adjusting carb intake next time." :
+    eating  ? "Significantly elevated – heavy meal impact. Check if pattern repeats on normal days." :
     "Significantly elevated. HGH-induced IR possible – track closely."
   };
 }
@@ -1306,7 +1362,8 @@ function render() {
   cards.innerHTML = "";
 
   descFiltered.forEach(row => {
-    const c       = classify(row.val, row.context);
+    const minsPost = (row.context === "Post Insulin") ? getMinutesSinceInjection(row, allData) : null;
+    const c        = classify(row.val, row.context, minsPost);
     const state   = row.state || "fasted";
     const context = row.context || "";
 
