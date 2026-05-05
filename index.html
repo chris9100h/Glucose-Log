@@ -1134,9 +1134,9 @@ function classify(v, context, minsPost) {
     postins ? (
       t === null  ? "Glucose still circulating – partitioning in progress but not yet complete." :
       t < 30      ? `${tStr}Carb spike expected – insulin has barely started. Completely normal, keep watching.` :
-      t < 90      ? `${tStr}Insulin ramping up – value should start dropping in the next 30–60 min. Within range.` :
-      t < 150     ? `${tStr}Still elevated at peak – clearance slightly slow. Review carb amount or timing for next session.` :
-                    `${tStr}Still elevated near end of window – partitioning suboptimal. Reconsider carb load or dosing.`
+      t < 90      ? `${tStr}Insulin ramping up. If you're eating carbs per protocol, staying elevated is expected – insulin is actively partitioning the load.` :
+      t < 150     ? `${tStr}Elevated at peak – if still eating carbs per protocol, this is working as intended. Only a concern if carb intake has stopped and the value isn't dropping.` :
+                    `${tStr}Window winding down – if you've finished eating, glucose should be clearing now. If still elevated with no recent carb intake, review total load or timing.`
     ) :
     prewo   ? "Elevated pre workout – expected after carb loading. Should drop during training." :
     postwo  ? "Elevated post workout – glucose not fully cleared. Monitor recovery." :
@@ -1152,9 +1152,9 @@ function classify(v, context, minsPost) {
     postins ? (
       t === null  ? "Glucose significantly elevated despite insulin – poor partitioning. HGH-induced IR or carb load too high." :
       t < 30      ? `${tStr}Glucose spike from carb load – insulin hasn't kicked in yet. Expected, no action needed.` :
-      t < 90      ? `${tStr}Still high, insulin approaching peak. Monitor – if no drop follows, review timing.` :
-      t < 150     ? `${tStr}Significantly elevated at peak – poor partitioning or carb excess. Track next value closely.` :
-                    `${tStr}Significantly elevated near end of window – HGH-induced IR or carb load too high. Reconsider protocol.`
+      t < 90      ? `${tStr}High but insulin is still ramping up. If consuming carbs per protocol, this is expected – insulin is working to partition the load. Monitor the trend.` :
+      t < 150     ? `${tStr}Significantly elevated at peak – if actively eating carbs, insulin is absorbing the load. If carb intake has stopped, partitioning may be slow. Track next value.` :
+                    `${tStr}Significantly elevated near end of window – carb intake should be winding down. If done eating and value persists, review total carb load or consider HGH-induced IR.`
     ) :
     prewo   ? "Significantly elevated pre workout – high carb load. Watch post-workout and next fasting value." :
     postwo  ? "Significantly elevated post workout – glucose not cleared during training. Consider adjusting pre-wo carbs." :
