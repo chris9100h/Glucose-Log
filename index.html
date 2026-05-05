@@ -826,6 +826,7 @@
   <div class="chart-header">
     <div class="chart-title">Trend</div>
     <div class="chart-range-btns">
+      <button class="range-btn" data-days="today">Today</button>
       <button class="range-btn" data-days="7">7D</button>
       <button class="range-btn active" data-days="30">30D</button>
       <button class="range-btn" data-days="90">90D</button>
@@ -1172,7 +1173,7 @@ let activeState  = "all";
 let activeContext = "all";
 let editingId    = null;
 let chartDays    = 30;
-let chartMode    = "days";   // "days" | "all" | "custom"
+let chartMode    = "days";   // "days" | "all" | "custom" | "today"
 let customFrom   = null;
 let customTo     = null;
 let glucoseChart = null;
@@ -1213,7 +1214,10 @@ function updatePhaseFilterDropdown() {
 function buildChart(filtered) {
   let inRange;
 
-  if (chartMode === "all") {
+  if (chartMode === "today") {
+    const todayDisp = toDisplay(new Date().toISOString().slice(0, 10));
+    inRange = filtered.filter(r => r.date === todayDisp);
+  } else if (chartMode === "all") {
     inRange = filtered;
   } else if (chartMode === "custom" && customFrom && customTo) {
     inRange = filtered.filter(r => {
@@ -1230,7 +1234,7 @@ function buildChart(filtered) {
     });
   }
 
-  const labels = inRange.map(r => r.date);
+  const labels = (chartMode === "today") ? inRange.map(r => r.time) : inRange.map(r => r.date);
   const values = inRange.map(r => r.val);
 
   // point colors
@@ -1578,7 +1582,9 @@ document.querySelectorAll('.range-btn').forEach(btn => {
       }
     } else {
       customEl.classList.remove('visible');
-      if (val === "0") {
+      if (val === "today") {
+        chartMode = "today";
+      } else if (val === "0") {
         chartMode = "all";
       } else {
         chartMode = "days";
